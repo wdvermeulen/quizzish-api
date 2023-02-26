@@ -11,13 +11,6 @@ datasource db {
   relationMode = "prisma"
 }
 
-model Example {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Necessary for Next auth
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -52,6 +45,8 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  room          Room?
+  quizzes       Quiz[]
 }
 
 model VerificationToken {
@@ -60,4 +55,80 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Room {
+  startCode String   @id @unique
+  hostIds   Host[]
+  quizId    String
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Host {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(128)
+  peerId    String   @unique
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [startCode], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Quiz {
+  id        String   @id @default(cuid())
+  type      String   @db.VarChar(64)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(256)
+  rounds    Round[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Round {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(128)
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  slides    Slide[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Slide {
+  id            String         @id @default(cuid())
+  type          String         @db.VarChar(64)
+  name          String         @db.VarChar(128)
+  roundId       String
+  round         Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  seconds       Int
+  question      String         @db.VarChar(512)
+  answerOptions AnswerOption[]
+  answer        String         @db.VarChar(512)
+  largeText     String         @db.VarChar(8192)
+  media         String         @db.VarChar(128)
+  images        Image[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model AnswerOption {
+  id         String @id @default(cuid())
+  slideId    String
+  slide      Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  option     String @db.VarChar(512)
+  maxReward  Int    @default(100)
+  minReward  Int    @default(0)
+  maxPenalty Int    @default(100)
+  minPenalty Int    @default(0)
+}
+
+model Image {
+  id      String @id @default(cuid())
+  slideId String
+  slide   Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  image   String @db.VarChar(128)
 }
