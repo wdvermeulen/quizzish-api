@@ -6,7 +6,7 @@ module.exports = {
       fontFamily: {
         serif: ["Playfair Display", "serif"],
         sans: ["Josefin Sans", "sans-serif"],
-      }
+      },
     },
   },
   plugins: [],

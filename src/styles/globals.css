@@ -3,18 +3,19 @@
 @tailwind utilities;
 
 @font-face {
-	font-family: 'Playfair Display';
-	font-display: swap;
-  src: url("./fonts/Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf") format("woff2-variations");
-	src: url('https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap');
+  font-family: "Playfair Display";
+  font-display: swap;
+  src: url("./fonts/Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf")
+    format("woff2-variations");
+  src: url("https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap");
 }
 
 @font-face {
-	font-family: 'Josefin Sans';
-	font-display: swap;
-	src: url('https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@1,100&display=swap');
+  font-family: "Josefin Sans";
+  font-display: swap;
+  src: url("https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@1,100&display=swap");
 }
 
 html {
-	@apply font-sans;
+  @apply font-sans;
 }

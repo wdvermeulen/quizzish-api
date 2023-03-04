@@ -58,9 +58,9 @@ model VerificationToken {
 }
 
 model Room {
-  startCode String   @id @unique
+  startCode String   @id
   hostIds   Host[]
-  quizId    String
+  quizId    String   @unique
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -70,11 +70,15 @@ model Room {
 model Host {
   id        String   @id @default(cuid())
   name      String   @db.VarChar(128)
-  peerId    String   @unique
+  peerId    String   @db.VarChar(64) @unique
   roomId    String
+  userId    String
   room      Room     @relation(fields: [roomId], references: [startCode], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([roomId, name])
+  @@unique([userId, id])
 }
 
 model Quiz {
@@ -86,49 +90,63 @@ model Quiz {
   rounds    Round[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, id])
 }
 
 model Round {
   id        String   @id @default(cuid())
-  name      String   @db.VarChar(128)
+  name      String?  @db.VarChar(128)
+  userId    String
   quizId    String
   quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   slides    Slide[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([userId, id])
 }
 
 model Slide {
   id            String         @id @default(cuid())
+  userId        String
   type          String         @db.VarChar(64)
-  name          String         @db.VarChar(128)
+  name          String?        @db.VarChar(128)
   roundId       String
   round         Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  seconds       Int
+  seconds       Int?
   question      String         @db.VarChar(512)
   answerOptions AnswerOption[]
-  answer        String         @db.VarChar(512)
-  largeText     String         @db.VarChar(8192)
-  media         String         @db.VarChar(128)
+  manualCheck   Boolean        @default(false)
+  explanation   String?        @db.VarChar(512)
+  largeText     String?        @db.Text
+  media         String?        @db.VarChar(128)
   images        Image[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  @@unique([userId, id])
 }
 
 model AnswerOption {
-  id         String @id @default(cuid())
-  slideId    String
-  slide      Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  option     String @db.VarChar(512)
-  maxReward  Int    @default(100)
-  minReward  Int    @default(0)
-  maxPenalty Int    @default(100)
-  minPenalty Int    @default(0)
+  id          String   @id @default(cuid())
+  userId      String
+  slideId     String
+  slide       Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  description String   @db.VarChar(512)
+  isCorrect   Boolean?
+  earlyPoints Int?     @default(100)
+  latePoints  Int?     @default(0)
+
+  @@unique([userId, id])
 }
 
 model Image {
   id      String @id @default(cuid())
+  userId  String
   slideId String
   slide   Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
   image   String @db.VarChar(128)
+
+  @@unique([userId, id])
 }
