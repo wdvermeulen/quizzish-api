@@ -15,7 +15,7 @@ function generateRoomCode(length: number) {
 
 export const roomRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(z.object({ quizId: z.string().cuid() }))
+    .input(z.object({ gameId: z.string().cuid() }))
     .mutation(({ input, ctx }) =>
       ctx.prisma.room
         .delete({

@@ -6,8 +6,15 @@ module.exports = {
       fontFamily: {
         serif: ["Playfair Display", "serif"],
         sans: ["Josefin Sans", "sans-serif"],
+        umbra: ["Umbra", "sans-serif"],
       },
+      dropShadow: {
+        'xl': '0 35px 35px rgba(0, 0, 0, 0.25)',
+      }
     },
   },
-  plugins: [],
+  plugins: [require("daisyui")],
+  daisyui: {
+    themes: false,
+  },
 };

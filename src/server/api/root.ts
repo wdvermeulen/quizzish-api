@@ -1,6 +1,6 @@
 import { answerOptionRouter } from "./routers/answer-option";
 import { imageRouter } from "./routers/image";
-import { quizRouter } from "./routers/quiz";
+import { gameRouter } from "./routers/game";
 import { roomRouter } from "./routers/room";
 import { roundRouter } from "./routers/round";
 import { slideRouter } from "./routers/slide";
@@ -14,7 +14,7 @@ import { createTRPCRouter } from "./trpc";
 export const appRouter = createTRPCRouter({
   answerOption: answerOptionRouter,
   image: imageRouter,
-  quiz: quizRouter,
+  game: gameRouter,
   room: roomRouter,
   round: roundRouter,
   slide: slideRouter,

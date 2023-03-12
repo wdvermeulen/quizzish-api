@@ -1,12 +1,11 @@
 import { type NextPage } from "next";
 import Head from "next/head";
-import { signIn, signOut, useSession } from "next-auth/react";
-import { api } from "../utils/api";
+import { signIn, useSession } from "next-auth/react";
+import Link from "next/link";
+import { TopBar } from "../sections/top-bar";
 
 const Home: NextPage = () => {
   const { data: sessionData } = useSession();
-
-  const test = api.room.create.useMutation();
 
   return (
     <>
@@ -15,24 +14,31 @@ const Home: NextPage = () => {
         <meta name="description" content="Quiz-, pubquiz- en puzzelmaker" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
-          <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
-            Quizzish
-          </h1>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {test.data ? test.data : " No data"}
-              {sessionData?.user && (
-                <button
-                  className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
-                  onClick={() => test.mutate({ quizId: "123" })}
-                >
-                  Create room
+      <TopBar />
+      <main className="hero overflow-auto">
+        <div className="hero-body px-2">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <label>
+                Doe mee
+                <input
+                  type="text"
+                  id="startcode"
+                  placeholder="Startcode"
+                  className="input-bordered input input-lg mt-1 w-full max-w-xs"
+                />
+              </label>
+              <div className="divider">of</div>
+              {sessionData ? (
+                <Link href="new-game/start" className="btn-primary btn">
+                  Start een nieuw spel
+                </Link>
+              ) : (
+                <button className="btn" onClick={() => void signIn()}>
+                  Log in
                 </button>
               )}
-            </p>
-            <AuthShowcase />
+            </div>
           </div>
         </div>
       </main>
@@ -41,28 +47,3 @@ const Home: NextPage = () => {
 };
 
 export default Home;
-
-const AuthShowcase: React.FC = () => {
-  const { data: sessionData } = useSession();
-
-  // const { data: secretMessage } = api.example.getSecretMessage.useQuery(
-  //   undefined, // no input,
-  //   { enabled: sessionData?.user !== undefined }
-  // );
-  const secretMessage = "";
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-4">
-      <p className="text-center text-2xl text-white">
-        {sessionData && <span>Logged in as {sessionData.user?.name}</span>}
-        {secretMessage && <span> - {secretMessage}</span>}
-      </p>
-      <button
-        className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
-        onClick={sessionData ? () => void signOut() : () => void signIn()}
-      >
-        {sessionData ? "Sign out" : "Sign in"}
-      </button>
-    </div>
-  );
-};

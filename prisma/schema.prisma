@@ -46,7 +46,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   room          Room?
-  quizzes       Quiz[]
+  games         Game[]
 }
 
 model VerificationToken {
@@ -60,7 +60,7 @@ model VerificationToken {
 model Room {
   startCode String   @id
   hostIds   Host[]
-  quizId    String   @unique
+  gameId    String   @unique
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -81,36 +81,42 @@ model Host {
   @@unique([userId, id])
 }
 
-model Quiz {
-  id        String   @id @default(cuid())
-  type      String   @db.VarChar(64)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String   @db.VarChar(256)
-  rounds    Round[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Game {
+  id          String   @id @default(cuid())
+  type        GameType
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(256)
+  description String?  @db.VarChar(1024)
+  rounds      Round[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([userId, id])
 }
 
 model Round {
-  id        String   @id @default(cuid())
-  name      String?  @db.VarChar(128)
-  userId    String
-  quizId    String
-  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  slides    Slide[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  index       Int
+  name        String?  @db.VarChar(128)
+  userId      String
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  slides      Slide[]
+  seconds     Int?
+  description String?  @db.VarChar(1024)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([userId, id])
+  @@unique([index, gameId])
 }
 
 model Slide {
   id            String         @id @default(cuid())
+  index         Int
   userId        String
-  type          String         @db.VarChar(64)
+  type          SlideType
   name          String?        @db.VarChar(128)
   roundId       String
   round         Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
@@ -126,10 +132,12 @@ model Slide {
   updatedAt     DateTime       @updatedAt
 
   @@unique([userId, id])
+  @@unique([index, roundId])
 }
 
 model AnswerOption {
   id          String   @id @default(cuid())
+  index       Int
   userId      String
   slideId     String
   slide       Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
@@ -139,14 +147,33 @@ model AnswerOption {
   latePoints  Int?     @default(0)
 
   @@unique([userId, id])
+  @@unique([index, slideId])
 }
 
 model Image {
   id      String @id @default(cuid())
+  index   Int
   userId  String
   slideId String
   slide   Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
   image   String @db.VarChar(128)
 
   @@unique([userId, id])
+  @@unique([index, slideId])
+}
+
+enum GameType {
+  REGULAR_QUIZ
+  PUBQUIZ
+  ESCAPE_ROOM
+  CUSTOM
+}
+
+enum SlideType {
+  TEXT
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  OPEN
+  MULTIPLE_SELECT
+  PUZZLE
 }

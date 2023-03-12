@@ -11,11 +11,30 @@
 }
 
 @font-face {
+  font-family: "Umbra";
+  font-display: swap;
+  src: url("./fonts/unicode.umbra.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "Josefin Sans";
   font-display: swap;
-  src: url("https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@1,100&display=swap");
+  src: url("./fonts/Josefin_Sans/JosefinSans-VariableFont_wght.ttf") format("truetype");
 }
 
 html {
   @apply font-sans;
+}
+
+html,
+body {
+  height: 100%;
+  position:relative;
+}
+
+#__next {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  @apply bg-base-200;
 }
