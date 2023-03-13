@@ -3,7 +3,12 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const roundRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(z.object({ gameId: z.string().cuid(), name: z.optional(z.string().max(128)) }))
+    .input(
+      z.object({
+        gameId: z.string().cuid(),
+        name: z.optional(z.string().max(128)),
+      })
+    )
     .mutation(async ({ input, ctx }) =>
       ctx.prisma.round
         .findFirst({
@@ -28,35 +33,72 @@ export const roundRouter = createTRPCRouter({
           })
         )
     ),
-  updateName: protectedProcedure
-    .input(z.object({ id: z.string().cuid(), name: z.string().max(128) }))
-    .mutation(({ ctx, input: { id, ...data } }) =>
-      ctx.prisma.round.updateMany({
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().cuid(),
+        index: z.optional(z.number().min(1)),
+        name: z.optional(z.string().max(128)),
+        seconds: z.optional(z.number()),
+        description: z.optional(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input: { id, ...data } }) => {
+      const index = data.index;
+      if (index) {
+        const round = await ctx.prisma.round.findUniqueOrThrow({
+          where: {
+            userId_id: {
+              id,
+              userId: ctx.session.user.id,
+            },
+          },
+        });
+        if (round.index !== index) {
+          await ctx.prisma.round.updateMany({
+            where: {
+              userId: ctx.session.user.id,
+              gameId: round.gameId,
+              index: {
+                gte: Math.min(round.index, index),
+                lte: Math.max(round.index, index),
+              },
+            },
+            data: {
+              index: index > round.index ? { decrement: 1 } : { increment: 1 },
+            },
+          });
+        }
+      }
+      return ctx.prisma.round.updateMany({
         where: {
           id,
           userId: ctx.session.user.id,
         },
         data,
-      })
-    ),
+      });
+    }),
   getAllForGame: protectedProcedure
     .input(z.object({ gameId: z.string().cuid() }))
     .query(({ ctx, input: { gameId } }) =>
       ctx.prisma.round.findMany({
         where: { userId: ctx.session.user.id, gameId },
+        orderBy: { index: "asc" },
       })
     ),
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(({ ctx, input: { id } }) =>
-      ctx.prisma.round.delete({
-        where: {
-          userId_id: {
-            id,
-            userId: ctx.session.user.id,
-          }
-        }
-      }).then((data) =>
+      ctx.prisma.round
+        .delete({
+          where: {
+            userId_id: {
+              id,
+              userId: ctx.session.user.id,
+            },
+          },
+        })
+        .then((data) =>
           ctx.prisma.round.updateMany({
             where: {
               userId: ctx.session.user.id,
@@ -72,5 +114,5 @@ export const roundRouter = createTRPCRouter({
             },
           })
         )
-    )
+    ),
 });

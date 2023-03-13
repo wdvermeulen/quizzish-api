@@ -11,7 +11,7 @@ interface EditRoundsProps {
 
 const EditRounds = ({ gameType, gameId, rounds, refetchRounds }: EditRoundsProps) => {
   const [roundName, setRoundName] = useState('');
-  const [selectedRound, setSelectedRound] = useState<null | number>(null);
+  const [selectedRound, setSelectedRound] = useState<null | string>(null);
   const createRound = api.round.create.useMutation();
 
   function addRound() {

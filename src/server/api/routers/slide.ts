@@ -44,6 +44,7 @@ export const slideRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().cuid(),
+        index: z.optional(z.number().min(1)),
         type: z.nativeEnum(SlideType),
         roundId: z.optional(z.string().cuid()),
         question: z.optional(z.string().min(1).max(512)),
@@ -54,40 +55,71 @@ export const slideRouter = createTRPCRouter({
         media: z.optional(z.string().max(128)),
       })
     )
-    .mutation(({ ctx, input: { id, ...rest } }) =>
-      ctx.prisma.slide.updateMany({
+    .mutation(async ({ ctx, input: { id, ...rest } }) => {
+      const index = rest.index;
+      if (index) {
+        const slide = await ctx.prisma.slide.findUniqueOrThrow({
+          where: {
+            userId_id: {
+              id,
+              userId: ctx.session.user.id,
+            },
+          },
+        });
+        if (slide.index !== index) {
+          await ctx.prisma.slide.updateMany({
+            where: {
+              userId: ctx.session.user.id,
+              roundId: slide.roundId,
+              index: {
+                gte: Math.min(slide.index, index),
+                lte: Math.max(slide.index, index),
+              },
+            },
+            data: {
+              index:
+                index > slide.index ? { decrement: 1 } : { increment: 1 },
+            },
+          });
+        }
+      }
+      return ctx.prisma.slide.update({
         where: {
-          id,
-          userId: ctx.session.user.id,
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
+          },
         },
         data: { ...rest },
-      })
-    ),
+      });
+    }),
   delete: protectedProcedure
     .input(z.object({ slideId: z.string().cuid() }))
     .mutation(({ ctx, input: { slideId } }) =>
-       ctx.prisma.slide.delete({
-        where: {
-          userId_id: {
-            id: slideId,
-            userId: ctx.session.user.id,
-          }
-        },
-      }).then((data) =>
-        ctx.prisma.slide.updateMany({
+      ctx.prisma.slide
+        .delete({
           where: {
-            userId: ctx.session.user.id,
-            roundId: data.roundId,
-            index: {
-              gt: data.index,
-            },
-          },
-          data: {
-            index: {
-              decrement: 1,
+            userId_id: {
+              id: slideId,
+              userId: ctx.session.user.id,
             },
           },
         })
-      )
+        .then((data) =>
+          ctx.prisma.slide.updateMany({
+            where: {
+              userId: ctx.session.user.id,
+              roundId: data.roundId,
+              index: {
+                gt: data.index,
+              },
+            },
+            data: {
+              index: {
+                decrement: 1,
+              },
+            },
+          })
+        )
     ),
 });

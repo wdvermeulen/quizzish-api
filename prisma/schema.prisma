@@ -109,7 +109,6 @@ model Round {
   updatedAt   DateTime @updatedAt
 
   @@unique([userId, id])
-  @@unique([index, gameId])
 }
 
 model Slide {
@@ -132,7 +131,6 @@ model Slide {
   updatedAt     DateTime       @updatedAt
 
   @@unique([userId, id])
-  @@unique([index, roundId])
 }
 
 model AnswerOption {
@@ -147,7 +145,6 @@ model AnswerOption {
   latePoints  Int?     @default(0)
 
   @@unique([userId, id])
-  @@unique([index, slideId])
 }
 
 model Image {
@@ -159,7 +156,6 @@ model Image {
   image   String @db.VarChar(128)
 
   @@unique([userId, id])
-  @@unique([index, slideId])
 }
 
 enum GameType {

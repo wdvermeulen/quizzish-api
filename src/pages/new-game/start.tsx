@@ -1,9 +1,23 @@
 import { type NextPage } from "next";
+import { useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 import { TopBar } from "../../sections/top-bar";
+import { api } from "../../utils/api";
 
 const Start: NextPage = () => {
+  const router = useRouter();
+  const { data: sessionData } = useSession();
+  const { data: games } = api.game.getAll.useQuery();
+
+  useEffect(() => {
+    if (!sessionData) {
+      void router.push("../");
+    }
+  });
+
   return (
     <>
       <Head>
@@ -18,15 +32,20 @@ const Start: NextPage = () => {
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <Link className="btn-primary btn" href="type">
+                
                 Nieuw spel bouwen
               </Link>
               <div className="divider">of</div>
-              <Link className="btn-disabled btn" href="load">
-                Opgeslagen spel inladen
-              </Link>
-              <i>Nog geen spellen opgeslagen</i>
-              <div className="divider">of</div>
+              {games?.map((game) => (
+                <div key={game.id}>
+                  <Link className="btn-primary btn w-full" href={`../edit/${game.id}`}>
+                    {game.name} inladen
+                  </Link>
+                  <div className="divider">of</div>
+                </div>
+              ))}
               <Link className="btn-disabled btn" href="store">
+                
                 Winkel openen
               </Link>
               <i>Winkel opent binnenkort</i>

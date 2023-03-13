@@ -40,7 +40,7 @@ export const answerOptionRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().cuid(),
-        index: z.optional(z.number()),
+        index: z.optional(z.number().min(1)),
         slideId: z.optional(z.string().cuid()),
         description: z.optional(z.string().min(1).max(512)),
         isCorrect: z.optional(z.boolean()),
@@ -48,8 +48,34 @@ export const answerOptionRouter = createTRPCRouter({
         latePoints: z.optional(z.number()),
       })
     )
-    .mutation(({ ctx, input: { id, ...rest } }) =>
-      ctx.prisma.answerOption.update({
+    .mutation(async ({ ctx, input: { id, ...rest } })  => {
+      const index = rest.index;
+      if (index) {
+        const answerOption = await ctx.prisma.answerOption.findUniqueOrThrow({
+          where: {
+            userId_id: {
+              id,
+              userId: ctx.session.user.id,
+            },
+          },
+        });
+        if (answerOption.index !== index) {
+          await ctx.prisma.answerOption.updateMany({
+            where: {
+              userId: ctx.session.user.id,
+              slideId: answerOption.slideId,
+              index: {
+                gte: Math.min(answerOption.index, index),
+                lte: Math.max(answerOption.index, index),
+              },
+            },
+            data: {
+              index: index > answerOption.index ? { decrement: 1 } : { increment: 1 },
+            },
+          });
+        }
+      }
+      return ctx.prisma.answerOption.update({
         where: {
           userId_id: {
             id,
@@ -57,8 +83,8 @@ export const answerOptionRouter = createTRPCRouter({
           },
         },
         data: { ...rest },
-      })
-    ),
+      });
+    }),
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(({ ctx, input: { id } }) =>

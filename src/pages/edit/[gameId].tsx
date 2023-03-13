@@ -1,8 +1,9 @@
 import { GameType } from "@prisma/client";
+import { useSession } from 'next-auth/react';
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from 'react';
 import EditRounds from "../../sections/edit-rounds";
 import GameSettings from "../../sections/game-settings";
 import { TopBar } from "../../sections/top-bar";
@@ -17,12 +18,14 @@ enum View {
 
 const Edit = () => {
   const router = useRouter();
+  const { data: sessionData } = useSession();
+
   const { gameId } = router.query;
 
   api.game.getDetail.useQuery(
     { id: gameId as string },
     {
-      enabled: typeof gameId === "string",
+      enabled: typeof gameId === "string" && !!sessionData,
       onSuccess: (data) => {
         if (data) {
           setGameName(data.name);
@@ -44,6 +47,11 @@ const Edit = () => {
   const [gameName, setGameName] = useState("");
   const [gameType, setGameType] = useState<GameType>(GameType.REGULAR_QUIZ);
   const [currentView, setCurrentView] = useState<View | {roundId: string}>(View.ROUNDS);
+
+  useEffect( () => {
+  if (!sessionData) {
+    void router.push("../");
+  }})
 
   return (
     <>

@@ -1,19 +1,25 @@
 import { GameType } from '@prisma/client';
 import { type NextPage } from "next";
+import { useSession } from 'next-auth/react';
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import GameSettings from '../../sections/game-settings';
 import { TopBar } from "../../sections/top-bar";
 import { api } from '../../utils/api';
 
 const Type: NextPage = () => {
+  const router = useRouter();
+  const { data: sessionData } = useSession();
   const [gameName, setGameName] = useState("");
   const [gameType, setGameType] = useState<GameType | undefined>(undefined);
-
   const createGame = api.game.create.useMutation()
-  const router = useRouter();
+
+  useEffect( () => {
+    if (!sessionData) {
+      void router.push("../");
+    }})
 
   async function saveGame() {
     if (gameType) {
