@@ -9,7 +9,6 @@
     "lint": "next lint",
     "start": "next start",
     "db-push": "prisma db push",
-    "db-seed": "NODE_ENV=development prisma db seed",
     "prisma-studio": "npx prisma studio",
     "prettier": "prettier --write ."
   },
