@@ -19,7 +19,8 @@
 @font-face {
   font-family: "Josefin Sans";
   font-display: swap;
-  src: url("./fonts/Josefin_Sans/JosefinSans-VariableFont_wght.ttf") format("truetype");
+  src: url("./fonts/Josefin_Sans/JosefinSans-VariableFont_wght.ttf")
+    format("truetype");
 }
 
 html {
@@ -29,7 +30,7 @@ html {
 html,
 body {
   height: 100%;
-  position:relative;
+  position: relative;
 }
 
 #__next {

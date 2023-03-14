@@ -77,8 +77,7 @@ export const slideRouter = createTRPCRouter({
               },
             },
             data: {
-              index:
-                index > slide.index ? { decrement: 1 } : { increment: 1 },
+              index: index > slide.index ? { decrement: 1 } : { increment: 1 },
             },
           });
         }

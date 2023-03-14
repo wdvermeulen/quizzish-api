@@ -10,12 +10,28 @@ export const imageRouter = createTRPCRouter({
       })
     )
     .mutation(({ input, ctx }) =>
-      ctx.prisma.image.create({
-        data: {
-          ...input,
-          userId: ctx.session.user.id,
-        },
-      })
+      ctx.prisma.image
+        .findFirst({
+          where: {
+            userId: ctx.session.user.id,
+            slideId: input.slideId,
+          },
+          orderBy: {
+            index: "desc",
+          },
+          select: {
+            index: true,
+          },
+        })
+        .then((data) =>
+          ctx.prisma.image.create({
+            data: {
+              ...input,
+              index: (data?.index ?? 0) + 1,
+              userId: ctx.session.user.id,
+            },
+          })
+        )
     ),
   update: protectedProcedure
     .input(

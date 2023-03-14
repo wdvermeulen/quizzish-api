@@ -1,9 +1,8 @@
-import { GameType, Round } from "@prisma/client";
+import type { Round } from "@prisma/client";
 import { useState } from "react";
 import { api } from "../utils/api";
 
 interface EditRoundsProps {
-  gameType: GameType;
   gameId: string;
   rounds?: Round[];
   refetchRounds: () => void;
@@ -11,7 +10,6 @@ interface EditRoundsProps {
 }
 
 const EditRounds = ({
-  gameType,
   gameId,
   rounds,
   refetchRounds,

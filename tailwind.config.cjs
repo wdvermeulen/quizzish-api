@@ -9,8 +9,8 @@ module.exports = {
         umbra: ["Umbra", "sans-serif"],
       },
       dropShadow: {
-        'xl': '0 35px 35px rgba(0, 0, 0, 0.25)',
-      }
+        xl: "0 35px 35px rgba(0, 0, 0, 0.25)",
+      },
     },
   },
   plugins: [require("daisyui")],

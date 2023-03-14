@@ -1,39 +1,43 @@
-import { GameType } from '@prisma/client';
+import type { GameType } from "@prisma/client";
 import { type NextPage } from "next";
-import { useSession } from 'next-auth/react';
+import { useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import GameSettings from '../../sections/game-settings';
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import GameSettings from "../../sections/game-settings";
 import { TopBar } from "../../sections/top-bar";
-import { api } from '../../utils/api';
+import { api } from "../../utils/api";
 
 const Type: NextPage = () => {
   const router = useRouter();
   const { data: sessionData } = useSession();
   const [gameName, setGameName] = useState("");
   const [gameType, setGameType] = useState<GameType | undefined>(undefined);
-  const createGame = api.game.create.useMutation()
+  const createGame = api.game.create.useMutation();
 
-  useEffect( () => {
+  useEffect(() => {
     if (!sessionData) {
       void router.push("../");
-    }})
+    }
+  });
 
   async function saveGame() {
     if (gameType) {
-      return createGame.mutateAsync({
-        name: gameName,
-        type: gameType,
-      }, {
-        onSuccess: ({id}) => {
-          router.push(`/edit/${id}`);
+      return createGame.mutateAsync(
+        {
+          name: gameName,
+          type: gameType,
         },
-        onError: (error) => {
-          console.error(error);
+        {
+          onSuccess: ({ id }) => {
+            router.push(`/edit/${id}`);
+          },
+          onError: (error) => {
+            console.error(error);
+          },
         }
-      });
+      );
     }
   }
 
@@ -61,16 +65,16 @@ const Type: NextPage = () => {
                 gameType={gameType}
               />
               <footer className="mt-10">
-              <Link className="btn-outline btn" href="..">
-                Annuleren
-              </Link>
-              <button
-                role="submit"
-                className="btn btn-primary float-right"
-                disabled={!(gameName && gameType)}
-              >
-                Volgende
-              </button>
+                <Link className="btn-outline btn" href="..">
+                  Annuleren
+                </Link>
+                <button
+                  role="submit"
+                  className="btn-primary btn float-right"
+                  disabled={!(gameName && gameType)}
+                >
+                  Volgende
+                </button>
               </footer>
             </form>
           )}

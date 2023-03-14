@@ -1,12 +1,15 @@
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ReactElement } from 'react';
+import type { ReactElement } from "react";
 
 export const TopBar = ({
   children,
   title,
-}: {children?: ReactElement, title?: string}) => {
+}: {
+  children?: ReactElement;
+  title?: string;
+}) => {
   const { data: sessionData } = useSession();
   const router = useRouter();
   return (
@@ -22,8 +25,8 @@ export const TopBar = ({
           </button>
         )}
       </div>
-      <h1 className="navbar-center text-xl text-base-content font-umbra flex-shrink text-center">
-        {title || (<Link href="/">Quizzish</Link>)}
+      <h1 className="navbar-center flex-shrink text-center font-umbra text-xl text-base-content">
+        {title || <Link href="/">Quizzish</Link>}
       </h1>
       <div className="navbar-end">
         {sessionData && (

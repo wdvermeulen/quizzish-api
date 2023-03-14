@@ -48,7 +48,7 @@ export const answerOptionRouter = createTRPCRouter({
         latePoints: z.optional(z.number()),
       })
     )
-    .mutation(async ({ ctx, input: { id, ...rest } })  => {
+    .mutation(async ({ ctx, input: { id, ...rest } }) => {
       const index = rest.index;
       if (index) {
         const answerOption = await ctx.prisma.answerOption.findUniqueOrThrow({
@@ -70,7 +70,10 @@ export const answerOptionRouter = createTRPCRouter({
               },
             },
             data: {
-              index: index > answerOption.index ? { decrement: 1 } : { increment: 1 },
+              index:
+                index > answerOption.index
+                  ? { decrement: 1 }
+                  : { increment: 1 },
             },
           });
         }

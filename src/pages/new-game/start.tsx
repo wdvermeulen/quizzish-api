@@ -32,20 +32,21 @@ const Start: NextPage = () => {
           <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <Link className="btn-primary btn" href="type">
-                
                 Nieuw spel bouwen
               </Link>
               <div className="divider">of</div>
               {games?.map((game) => (
                 <div key={game.id}>
-                  <Link className="btn-primary btn w-full" href={`../edit/${game.id}`}>
+                  <Link
+                    className="btn-primary btn w-full"
+                    href={`../edit/${game.id}`}
+                  >
                     {game.name} inladen
                   </Link>
                   <div className="divider">of</div>
                 </div>
               ))}
               <Link className="btn-disabled btn" href="store">
-                
                 Winkel openen
               </Link>
               <i>Winkel opent binnenkort</i>

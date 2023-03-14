@@ -1,4 +1,4 @@
-import { GameType } from '@prisma/client';
+import { GameType } from "@prisma/client";
 
 interface GameSettingsProps {
   setGameName: (name: string) => void;

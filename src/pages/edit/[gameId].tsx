@@ -1,9 +1,9 @@
 import { GameType } from "@prisma/client";
-import { useSession } from 'next-auth/react';
+import { useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import EditRounds from "../../sections/edit-rounds";
 import GameSettings from "../../sections/game-settings";
 import { TopBar } from "../../sections/top-bar";
@@ -46,12 +46,15 @@ const Edit = () => {
   const [presenterView, setPresenterView] = useState(false);
   const [gameName, setGameName] = useState("");
   const [gameType, setGameType] = useState<GameType>(GameType.REGULAR_QUIZ);
-  const [currentView, setCurrentView] = useState<View | {roundId: string}>(View.ROUNDS);
+  const [currentView, setCurrentView] = useState<View | { roundId: string }>(
+    View.ROUNDS
+  );
 
-  useEffect( () => {
-  if (!sessionData) {
-    void router.push("../");
-  }})
+  useEffect(() => {
+    if (!sessionData) {
+      void router.push("../");
+    }
+  });
 
   return (
     <>
@@ -61,7 +64,7 @@ const Edit = () => {
       <TopBar title={gameName}>
         <label
           htmlFor="settings-drawer"
-          className="drawer-button btn-primary btn lg:hidden"
+          className="btn-primary drawer-button btn lg:hidden"
         >
           Open menu
         </label>
@@ -84,11 +87,10 @@ const Edit = () => {
             )}
             {currentView === View.ROUNDS && (
               <EditRounds
-                gameType={gameType}
                 gameId={gameId}
                 refetchRounds={() => void refetchRounds()}
                 rounds={rounds}
-                editRound={(roundId) => setCurrentView({roundId})}
+                editRound={(roundId) => setCurrentView({ roundId })}
               ></EditRounds>
             )}
           </main>
@@ -133,7 +135,13 @@ const Edit = () => {
               {rounds?.map((round) => (
                 <li key={round.id}>
                   <button
-                    className={typeof currentView === 'object' && ('roundId' in currentView) && currentView.roundId === round.id ? "active" : ""}
+                    className={
+                      typeof currentView === "object" &&
+                      "roundId" in currentView &&
+                      currentView.roundId === round.id
+                        ? "active"
+                        : ""
+                    }
                     onClick={() => setCurrentView({ roundId: round.id })}
                   >
                     {round.name || `Ronde ${round.index}`}
