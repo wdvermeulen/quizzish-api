@@ -70,7 +70,7 @@ model Room {
 model Host {
   id        String   @id @default(cuid())
   name      String   @db.VarChar(128)
-  peerId    String   @db.VarChar(64) @unique
+  peerId    String   @unique @db.VarChar(64)
   roomId    String
   userId    String
   room      Room     @relation(fields: [roomId], references: [startCode], onDelete: Cascade)
@@ -82,67 +82,71 @@ model Host {
 }
 
 model Game {
-  id          String   @id @default(cuid())
-  type        GameType
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String   @db.VarChar(256)
-  description String?  @db.VarChar(1024)
-  rounds      Round[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               GameType?
+  name               String?   @db.VarChar(64)
+  description        String?   @db.VarChar(1024)
+  rounds             Round[]
+  timeLimitInMinutes Int       @default(1440)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@unique([userId, id])
 }
 
 model Round {
-  id          String   @id @default(cuid())
-  index       Int
-  name        String?  @db.VarChar(128)
-  userId      String
-  gameId      String
-  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  slides      Slide[]
-  seconds     Int?
-  description String?  @db.VarChar(1024)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String?  @db.VarChar(128)
+  userId             String
+  gameId             String
+  game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  index              Int
+  nextRoundId        String?
+  slides             Slide[]
+  timeLimitInMinutes Int?
+  description        String?  @db.VarChar(1024)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([userId, id])
 }
 
 model Slide {
-  id            String         @id @default(cuid())
-  index         Int
-  userId        String
-  type          SlideType
-  name          String?        @db.VarChar(128)
-  roundId       String
-  round         Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  seconds       Int?
-  question      String         @db.VarChar(512)
-  answerOptions AnswerOption[]
-  manualCheck   Boolean        @default(false)
-  explanation   String?        @db.VarChar(512)
-  largeText     String?        @db.Text
-  media         String?        @db.VarChar(128)
-  images        Image[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                 String         @id @default(cuid())
+  userId             String
+  index              Int
+  type               SlideType      @default(TEXT)
+  name               String?        @db.VarChar(128)
+  roundId            String
+  round              Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  timeLimitInSeconds Int?
+  description        String?        @db.VarChar(512)
+  answerOptions      AnswerOption[]
+  manualCheck        Boolean        @default(false)
+  instantCheck       Boolean        @default(true)
+  explanation        String?        @db.VarChar(512)
+  largeText          String?        @db.Text
+  media              String?        @db.VarChar(128)
+  images             Image[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@unique([userId, id])
 }
 
 model AnswerOption {
-  id          String   @id @default(cuid())
-  index       Int
-  userId      String
-  slideId     String
-  slide       Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  description String   @db.VarChar(512)
-  isCorrect   Boolean?
-  earlyPoints Int?     @default(100)
-  latePoints  Int?     @default(0)
+  id            String  @id @default(cuid())
+  index         Int
+  userId        String
+  slideId       String
+  slide         Slide   @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  description   String? @db.VarChar(512)
+  numericAnswer Int?
+  isCorrect     Boolean @default(false)
+  earlyPoints   Int?    @default(100)
+  latePoints    Int?    @default(0)
 
   @@unique([userId, id])
 }

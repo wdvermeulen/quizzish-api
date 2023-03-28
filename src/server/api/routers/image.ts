@@ -41,13 +41,13 @@ export const imageRouter = createTRPCRouter({
         image: z.optional(z.string().max(128)),
       })
     )
-    .mutation(({ ctx, input: { id, ...rest } }) =>
+    .mutation(({ ctx, input: { id, ...data } }) =>
       ctx.prisma.image.updateMany({
         where: {
           id,
           userId: ctx.session.user.id,
         },
-        data: { ...rest },
+        data,
       })
     ),
   delete: protectedProcedure

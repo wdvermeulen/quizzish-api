@@ -38,9 +38,9 @@ export const roundRouter = createTRPCRouter({
       z.object({
         id: z.string().cuid(),
         index: z.optional(z.number().min(1)),
-        name: z.optional(z.string().max(128)),
-        seconds: z.optional(z.number()),
-        description: z.optional(z.string()),
+        name: z.optional(z.string().min(1).max(128).or(z.null())),
+        timeLimitInMinutes: z.optional(z.number().or(z.null())),
+        description: z.optional(z.string().min(1).max(1024).or(z.null())),
       })
     )
     .mutation(async ({ ctx, input: { id, ...data } }) => {
@@ -78,6 +78,16 @@ export const roundRouter = createTRPCRouter({
         data,
       });
     }),
+  get: protectedProcedure
+    .input(z.object({ roundId: z.string().cuid() }))
+    .query(({ ctx, input: { roundId } }) =>
+      ctx.prisma.round.findUnique({
+        where: { userId_id: { userId: ctx.session.user.id, id: roundId } },
+        include: {
+          slides: { orderBy: { index: "asc" } },
+        },
+      })
+    ),
   getAllForGame: protectedProcedure
     .input(z.object({ gameId: z.string().cuid() }))
     .query(({ ctx, input: { gameId } }) =>

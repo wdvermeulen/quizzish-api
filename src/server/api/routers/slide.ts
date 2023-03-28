@@ -7,13 +7,13 @@ export const slideRouter = createTRPCRouter({
     .input(
       z.object({
         roundId: z.string().cuid(),
-        type: z.nativeEnum(SlideType),
-        question: z.string().min(1).max(512),
-        name: z.optional(z.string().max(128)),
-        seconds: z.optional(z.number().min(1)),
-        explanation: z.optional(z.string().max(512)),
-        largeText: z.optional(z.string().max(16777215)),
-        media: z.optional(z.string().max(128)),
+        type: z.optional(z.nativeEnum(SlideType)),
+        description: z.optional(z.string().min(1).max(512)),
+        name: z.optional(z.string().min(1).max(128).or(z.null())),
+        timeLimitInSeconds: z.optional(z.number().min(1).or(z.null())),
+        explanation: z.optional(z.string().min(1).max(512).or(z.null())),
+        largeText: z.optional(z.string().min(1).max(16777215).or(z.null())),
+        media: z.optional(z.string().min(1).max(128).or(z.null())),
       })
     )
     .mutation(({ input, ctx }) =>
@@ -40,23 +40,41 @@ export const slideRouter = createTRPCRouter({
           })
         )
     ),
+  get: protectedProcedure
+    .input(z.object({ slideId: z.string().cuid() }))
+    .query(({ ctx, input: { slideId } }) =>
+      ctx.prisma.slide.findUniqueOrThrow({
+        where: {
+          userId_id: {
+            id: slideId,
+            userId: ctx.session.user.id,
+          },
+        },
+        include: {
+          answerOptions: { orderBy: { index: "asc" } },
+          images: true,
+        },
+      })
+    ),
   update: protectedProcedure
     .input(
       z.object({
         id: z.string().cuid(),
         index: z.optional(z.number().min(1)),
-        type: z.nativeEnum(SlideType),
+        type: z.optional(z.nativeEnum(SlideType)),
         roundId: z.optional(z.string().cuid()),
-        question: z.optional(z.string().min(1).max(512)),
-        name: z.optional(z.string()),
-        seconds: z.optional(z.number().min(1)),
-        explanation: z.optional(z.string().max(512)),
-        largeText: z.optional(z.string().max(16777215)),
-        media: z.optional(z.string().max(128)),
+        description: z.optional(z.string().min(1).max(512)),
+        name: z.optional(z.string().min(1).max(128).or(z.null())),
+        timeLimitInSeconds: z.optional(z.number().min(1).or(z.null())),
+        manualCheck: z.optional(z.boolean()),
+        instantCheck: z.optional(z.boolean()),
+        explanation: z.optional(z.string().min(1).max(512).or(z.null())),
+        largeText: z.optional(z.string().min(1).max(16777215).or(z.null())),
+        media: z.optional(z.string().min(1).max(128).or(z.null())),
       })
     )
-    .mutation(async ({ ctx, input: { id, ...rest } }) => {
-      const index = rest.index;
+    .mutation(async ({ ctx, input: { id, ...data } }) => {
+      const index = data.index;
       if (index) {
         const slide = await ctx.prisma.slide.findUniqueOrThrow({
           where: {
@@ -89,7 +107,7 @@ export const slideRouter = createTRPCRouter({
             userId: ctx.session.user.id,
           },
         },
-        data: { ...rest },
+        data,
       });
     }),
   delete: protectedProcedure

@@ -4,17 +4,15 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        serif: ["Playfair Display", "serif"],
-        sans: ["Josefin Sans", "sans-serif"],
-        umbra: ["Umbra", "sans-serif"],
+        sans: ["var(--font-josefin)"],
       },
-      dropShadow: {
-        xl: "0 35px 35px rgba(0, 0, 0, 0.25)",
+      boxShadow: {
+        xl: "0 0 1px hsl(var(--a) / 100%), 1px 1px 1px hsl(var(--a) / 100%), 2px 2px 1.5px hsl(var(--a) / 80%), 3px 3px 2px hsl(var(--a) / 60%), 4px 4px 2.5px hsl(var(--a) / 40%), 5px 5px 3px hsl(var(--a) / 20%), inset 1px 1px 1px hsl(var(--b1) / 20%)",
       },
     },
   },
   plugins: [require("daisyui")],
   daisyui: {
-    themes: false,
+    // themes: false,
   },
 };

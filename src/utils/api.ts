@@ -5,12 +5,17 @@
  *
  * We also create a few inference helpers for input and output types
  */
-import { httpBatchLink, loggerLink } from "@trpc/client";
+import {
+  httpBatchLink,
+  loggerLink,
+  type TRPCClientErrorLike,
+} from "@trpc/client";
 import { createTRPCNext } from "@trpc/next";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
-import superjson from "superjson";
+import toast from "react-hot-toast";
 
-import { type AppRouter } from "../server/api/root";
+import { type AppRouter } from "server/api/root";
+import superjson from "superjson";
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") return ""; // browser should use relative url
@@ -67,3 +72,29 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  * @example type HelloOutput = RouterOutputs['example']['hello']
  **/
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+export const handleErrorClientSide = (e: TRPCClientErrorLike<AppRouter>) => {
+  const zodError = e.data?.zodError;
+  if (zodError) {
+    const fields = Object.keys(zodError.fieldErrors);
+    fields.forEach((field) => {
+      const inputElement = document.getElementsByName(field)[0];
+      const labelElement = inputElement
+        ? (document.querySelector(
+            `label[for="${inputElement.id}"]`
+          ) as HTMLLabelElement)
+        : null;
+      const label = labelElement?.innerText || field;
+      const errorMessage = zodError.fieldErrors[field];
+      if (errorMessage && errorMessage[0]) {
+        toast.error(`Fout op veld "${label}": ${errorMessage[0]}`);
+      } else {
+        toast.error(`Fout op veld "${label}"`);
+      }
+    });
+  } else {
+    toast.error(
+      "Er ging iets mis. Controleer of alles klopt en probeer het opnieuw."
+    );
+  }
+};

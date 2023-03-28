@@ -1,8 +1,8 @@
+import { TopBar } from "components/top-bar";
 import { type NextPage } from "next";
-import Head from "next/head";
 import { signIn, useSession } from "next-auth/react";
+import Head from "next/head";
 import Link from "next/link";
-import { TopBar } from "../sections/top-bar";
 
 const Home: NextPage = () => {
   const { data: sessionData } = useSession();
@@ -17,7 +17,7 @@ const Home: NextPage = () => {
       <TopBar />
       <main className="hero overflow-auto">
         <div className="hero-body px-2">
-          <div className="card bg-base-100 shadow-xl">
+          <article className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <label>
                 Doe mee
@@ -30,7 +30,7 @@ const Home: NextPage = () => {
               </label>
               <div className="divider">of</div>
               {sessionData ? (
-                <Link href="new-game/start" className="btn-primary btn">
+                <Link href="new-game" className="btn-primary btn">
                   Start een nieuw spel
                 </Link>
               ) : (
@@ -39,7 +39,7 @@ const Home: NextPage = () => {
                 </button>
               )}
             </div>
-          </div>
+          </article>
         </div>
       </main>
     </>

@@ -6,7 +6,11 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 export const gameRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
-      z.object({ name: z.string().max(256), type: z.nativeEnum(GameType) })
+      z.object({
+        name: z.optional(z.string().max(64)),
+        type: z.optional(z.nativeEnum(GameType)),
+        timeLimitInMinutes: z.optional(z.number().min(1)),
+      })
     )
     .mutation(({ ctx, input }) =>
       ctx.prisma.game.create({
@@ -16,14 +20,34 @@ export const gameRouter = createTRPCRouter({
         },
       })
     ),
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().cuid(),
+        name: z.optional(z.string().max(64).or(z.null())),
+        type: z.optional(z.nativeEnum(GameType).or(z.null())),
+        timeLimitInMinutes: z.optional(z.number().min(1)),
+      })
+    )
+    .mutation(({ ctx, input: { id, ...data } }) =>
+      ctx.prisma.game.update({
+        where: {
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
+          },
+        },
+        data,
+      })
+    ),
   getAll: protectedProcedure.query(({ ctx }) =>
     ctx.prisma.game.findMany({ where: { userId: ctx.session.user.id } })
   ),
   getDetail: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(({ ctx, input: { id } }) =>
-      ctx.prisma.game.findFirst({
-        where: { id, userId: ctx.session.user.id },
+      ctx.prisma.game.findUnique({
+        where: { userId_id: { id, userId: ctx.session.user.id } },
         include: {
           rounds: {
             include: {
@@ -45,14 +69,6 @@ export const gameRouter = createTRPCRouter({
     .mutation(({ ctx, input: { id } }) =>
       ctx.prisma.game.delete({
         where: { userId_id: { id, userId: ctx.session.user.id } },
-      })
-    ),
-  changeName: protectedProcedure
-    .input(z.object({ id: z.string().cuid(), name: z.string().max(256) }))
-    .mutation(({ ctx, input: { id, name } }) =>
-      ctx.prisma.game.update({
-        where: { userId_id: { id, userId: ctx.session.user.id } },
-        data: { name },
       })
     ),
 });

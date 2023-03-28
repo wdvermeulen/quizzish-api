@@ -1,8 +1,15 @@
-import { type AppType } from "next/app";
+import { Josefin_Sans } from "@next/font/google";
 import { type Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
-import { api } from "../utils/api";
-import "../styles/globals.css";
+import { type AppType } from "next/app";
+import { Toaster } from "react-hot-toast";
+import "styles/globals.css";
+import { api } from "utils/api";
+
+const josefin = Josefin_Sans({
+  subsets: ["latin"],
+  variable: "--font-josefin",
+});
 
 const MyApp: AppType<{ session: Session | null }> = ({
   Component,
@@ -10,7 +17,12 @@ const MyApp: AppType<{ session: Session | null }> = ({
 }) => {
   return (
     <SessionProvider session={session}>
-      <Component {...pageProps} />
+      <div
+        className={`${josefin.variable} grid h-full grid-rows-[auto_1fr_auto] bg-base-200 font-sans`}
+      >
+        <Component {...pageProps} />
+        <Toaster position="bottom-center" />
+      </div>
     </SessionProvider>
   );
 };
