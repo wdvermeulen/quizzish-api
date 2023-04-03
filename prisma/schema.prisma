@@ -82,16 +82,16 @@ model Host {
 }
 
 model Game {
-  id                 String    @id @default(cuid())
+  id                 String   @id @default(cuid())
   userId             String
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type               GameType?
-  name               String?   @db.VarChar(64)
-  description        String?   @db.VarChar(1024)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               GameType @default(CUSTOM)
+  name               String?  @db.VarChar(64)
+  description        String?  @db.VarChar(1024)
   rounds             Round[]
-  timeLimitInMinutes Int       @default(1440)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  timeLimitInMinutes Int      @default(1440)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([userId, id])
 }
@@ -104,6 +104,8 @@ model Round {
   game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   index              Int
   nextRoundId        String?
+  nextRound          Round?   @relation("NextRound", fields: [nextRoundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  previousRound      Round[]  @relation("NextRound")
   slides             Slide[]
   timeLimitInMinutes Int?
   description        String?  @db.VarChar(1024)

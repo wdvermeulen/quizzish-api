@@ -1,4 +1,4 @@
-export const minutesToString = (minutes?: number | null) => {
+export const minutesToString = (minutes?: number | null): string => {
   if (!minutes) {
     return "onbeperkt";
   }
@@ -8,7 +8,14 @@ export const minutesToString = (minutes?: number | null) => {
   if (minutes < 60) {
     return `${minutes} minuten`;
   }
-  const hours = minutes / 60;
+  if (minutes === 90) {
+    return "Anderhalf uur";
+  }
+  const hours = Math.floor(minutes / 60);
+  const minutesLeft = minutes % 60;
+  if (minutesLeft > 0) {
+    return `${hours} uur en ${minutesToString(minutesLeft)}`;
+  }
   return `${hours} uur`;
 };
 

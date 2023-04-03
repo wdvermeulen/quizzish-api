@@ -11,27 +11,20 @@ const NewGame: NextPage = () => {
   const router = useRouter();
   const { status } = useSession();
   const { data: games } = api.game.getAll.useQuery();
-  const createGame = api.game.create.useMutation();
+  const createGame = api.game.create.useMutation({
+    onSuccess: ({ id }) => {
+      void router.push(`/edit/${id}`);
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
       void router.push("../");
     }
   }, [status, router]);
-
-  async function saveGame() {
-    return createGame.mutateAsync(
-      {},
-      {
-        onSuccess: ({ id }) => {
-          void router.push(`/edit/${id}`);
-        },
-        onError: (error) => {
-          console.error(error);
-        },
-      }
-    );
-  }
 
   return (
     <>
@@ -46,7 +39,10 @@ const NewGame: NextPage = () => {
           </h2>
           <article className="card bg-base-100 shadow-xl">
             <div className="card-body">
-              <button className="btn-primary btn" onClick={void saveGame}>
+              <button
+                className="btn-primary btn"
+                onClick={() => createGame.mutate({})}
+              >
                 Nieuw spel bouwen
               </button>
               {games?.map((game) => (

@@ -41,18 +41,28 @@ export const slideRouter = createTRPCRouter({
         )
     ),
   get: protectedProcedure
-    .input(z.object({ slideId: z.string().cuid() }))
-    .query(({ ctx, input: { slideId } }) =>
+    .input(z.object({ id: z.string().cuid() }))
+    .query(({ ctx, input: { id } }) =>
       ctx.prisma.slide.findUniqueOrThrow({
         where: {
           userId_id: {
-            id: slideId,
+            id,
             userId: ctx.session.user.id,
           },
         },
         include: {
           answerOptions: { orderBy: { index: "asc" } },
           images: true,
+        },
+      })
+    ),
+  getForRound: protectedProcedure
+    .input(z.object({ roundId: z.string().cuid() }))
+    .query(({ ctx, input: { roundId } }) =>
+      ctx.prisma.slide.findMany({
+        where: {
+          roundId,
+          userId: ctx.session.user.id,
         },
       })
     ),

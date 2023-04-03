@@ -6,11 +6,13 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 export const gameRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
-      z.object({
-        name: z.optional(z.string().max(64)),
-        type: z.optional(z.nativeEnum(GameType)),
-        timeLimitInMinutes: z.optional(z.number().min(1)),
-      })
+      z
+        .object({
+          name: z.optional(z.string().min(1).max(64)),
+          type: z.optional(z.nativeEnum(GameType)),
+          timeLimitInMinutes: z.optional(z.number().min(1)),
+        })
+        .nullish()
     )
     .mutation(({ ctx, input }) =>
       ctx.prisma.game.create({
@@ -24,8 +26,8 @@ export const gameRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().cuid(),
-        name: z.optional(z.string().max(64).or(z.null())),
-        type: z.optional(z.nativeEnum(GameType).or(z.null())),
+        name: z.optional(z.string().min(1).max(64)),
+        type: z.optional(z.nativeEnum(GameType)),
         timeLimitInMinutes: z.optional(z.number().min(1)),
       })
     )
@@ -40,30 +42,21 @@ export const gameRouter = createTRPCRouter({
         data,
       })
     ),
-  getAll: protectedProcedure.query(({ ctx }) =>
-    ctx.prisma.game.findMany({ where: { userId: ctx.session.user.id } })
-  ),
-  getDetail: protectedProcedure
+  get: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(({ ctx, input: { id } }) =>
       ctx.prisma.game.findUnique({
-        where: { userId_id: { id, userId: ctx.session.user.id } },
-        include: {
-          rounds: {
-            include: {
-              slides: {
-                include: {
-                  answerOptions: { orderBy: { index: "asc" } },
-                  images: true,
-                },
-                orderBy: { index: "asc" },
-              },
-            },
-            orderBy: { index: "asc" },
+        where: {
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
           },
         },
       })
     ),
+  getAll: protectedProcedure.query(({ ctx }) =>
+    ctx.prisma.game.findMany({ where: { userId: ctx.session.user.id } })
+  ),
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(({ ctx, input: { id } }) =>

@@ -9,30 +9,39 @@ export const roundRouter = createTRPCRouter({
         name: z.optional(z.string().max(128)),
       })
     )
-    .mutation(async ({ input, ctx }) =>
-      ctx.prisma.round
-        .findFirst({
+    .mutation(async ({ input, ctx }) => {
+      const lastRound = await ctx.prisma.round.findFirst({
+        where: {
+          userId: ctx.session.user.id,
+          gameId: input.gameId,
+        },
+        orderBy: {
+          index: "desc",
+        },
+        select: {
+          index: true,
+          id: true,
+        },
+      });
+      const newRound = await ctx.prisma.round.create({
+        data: {
+          ...input,
+          index: (lastRound?.index ?? 0) + 1,
+          userId: ctx.session.user.id,
+        },
+      });
+      if (lastRound) {
+        await ctx.prisma.round.update({
           where: {
-            userId: ctx.session.user.id,
-            gameId: input.gameId,
+            id: lastRound.id,
           },
-          orderBy: {
-            index: "desc",
+          data: {
+            nextRoundId: newRound.id,
           },
-          select: {
-            index: true,
-          },
-        })
-        .then((data) =>
-          ctx.prisma.round.create({
-            data: {
-              ...input,
-              index: (data?.index ?? 0) + 1,
-              userId: ctx.session.user.id,
-            },
-          })
-        )
-    ),
+        });
+      }
+      return newRound;
+    }),
   update: protectedProcedure
     .input(
       z.object({
@@ -79,50 +88,55 @@ export const roundRouter = createTRPCRouter({
       });
     }),
   get: protectedProcedure
-    .input(z.object({ roundId: z.string().cuid() }))
-    .query(({ ctx, input: { roundId } }) =>
+    .input(z.object({ id: z.string().cuid() }))
+    .query(({ ctx, input: { id } }) =>
       ctx.prisma.round.findUnique({
-        where: { userId_id: { userId: ctx.session.user.id, id: roundId } },
-        include: {
-          slides: { orderBy: { index: "asc" } },
-        },
+        where: { userId_id: { userId: ctx.session.user.id, id } },
       })
     ),
-  getAllForGame: protectedProcedure
+  getForGame: protectedProcedure
     .input(z.object({ gameId: z.string().cuid() }))
     .query(({ ctx, input: { gameId } }) =>
       ctx.prisma.round.findMany({
         where: { userId: ctx.session.user.id, gameId },
-        orderBy: { index: "asc" },
       })
     ),
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
-    .mutation(({ ctx, input: { id } }) =>
-      ctx.prisma.round
-        .delete({
+    .mutation(async ({ ctx, input: { id } }) => {
+      const removedRound = await ctx.prisma.round.delete({
+        where: {
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+      await Promise.all([
+        ctx.prisma.round.updateMany({
           where: {
-            userId_id: {
-              id,
-              userId: ctx.session.user.id,
+            userId: ctx.session.user.id,
+            gameId: removedRound.gameId,
+            index: {
+              gt: removedRound.index,
             },
           },
-        })
-        .then((data) =>
-          ctx.prisma.round.updateMany({
-            where: {
-              userId: ctx.session.user.id,
-              gameId: data.gameId,
-              index: {
-                gt: data.index,
-              },
+          data: {
+            index: {
+              decrement: 1,
             },
-            data: {
-              index: {
-                decrement: 1,
-              },
-            },
-          })
-        )
-    ),
+          },
+        }),
+        ctx.prisma.round.updateMany({
+          where: {
+            userId: ctx.session.user.id,
+            nextRoundId: id,
+          },
+          data: {
+            nextRoundId: removedRound.nextRoundId,
+          },
+        }),
+      ]);
+      return removedRound;
+    }),
 });

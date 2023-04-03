@@ -12,7 +12,44 @@ const Home: NextPage = () => {
       <Head>
         <title>Quizzish</title>
         <meta name="description" content="Quiz-, pubquiz- en puzzelmaker" />
-        <link rel="icon" href="/favicon.ico" />
+        <link
+          rel="icon"
+          type="image/svg+xml"
+          href="/favicon.svg"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
+        <link
+          rel="icon"
+          href="/favicon.ico"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/favicon-dark-mode.png"
+          media="(prefers-color-scheme: dark)"
+        />
       </Head>
       <TopBar />
       <main className="hero overflow-auto">
