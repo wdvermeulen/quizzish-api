@@ -39,7 +39,7 @@ export const answerOptionRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(({ ctx, input: { id } }) =>
-      ctx.prisma.slide.findUniqueOrThrow({
+      ctx.prisma.answerOption.findUniqueOrThrow({
         where: {
           userId_id: {
             id,

@@ -1,6 +1,7 @@
 import { GameType } from "@prisma/client";
 import EditLayout from "components/layout/edit-layout";
 import { Loader } from "components/loader";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { api, handleErrorClientSide } from "utils/api";
@@ -10,7 +11,7 @@ const gameRangeToMinutes = [15, 30, 45, 60, 90, 120, 180, 360, 480, 960, 1440];
 
 const GameSettings = ({ id }: { id: string }) => {
   const router = useRouter();
-  const { data: game } = api.game.get.useQuery(
+  const { data: game, isLoading } = api.game.get.useQuery(
     { id },
     {
       onSuccess: (data) => {
@@ -56,8 +57,12 @@ const GameSettings = ({ id }: { id: string }) => {
   });
   const rawTimeLimit = watch("rawTimeLimit");
 
-  if (!game) {
+  if (isLoading) {
     return <Loader />;
+  }
+
+  if (!game) {
+    return <div>Kon dit spel niet vinden</div>;
   }
 
   return (
@@ -208,13 +213,22 @@ const GameSettings = ({ id }: { id: string }) => {
 };
 
 const Edit = () => {
-  const { gameId } = useRouter().query;
-  if (!gameId) {
+  const {
+    push,
+    query: { gameId },
+  } = useRouter();
+  const session = useSession();
+
+  if (session.status === "unauthenticated") {
+    void push("/");
+  }
+  if (!gameId || session.status !== "authenticated") {
     return <Loader />;
   }
   if (Array.isArray(gameId)) {
     return <>Ongeldige url</>;
   }
+
   return (
     <EditLayout>
       <GameSettings id={gameId} />

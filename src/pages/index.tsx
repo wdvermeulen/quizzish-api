@@ -71,7 +71,11 @@ const Home: NextPage = () => {
                   Start een nieuw spel
                 </Link>
               ) : (
-                <button className="btn" onClick={() => void signIn()}>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => void signIn()}
+                >
                   Log in
                 </button>
               )}

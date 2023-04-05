@@ -1,5 +1,6 @@
 import EditLayout from "components/layout/edit-layout";
 import { Loader } from "components/loader";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
@@ -52,13 +53,17 @@ const EditRound = ({ id }: { id: string }) => {
     {
       onSuccess: (data) => {
         if (data) {
+          const rawTimeLimit = roundRangeToMinutes.findIndex(
+            (m) => m === data.timeLimitInMinutes
+          );
           reset({
             nextRoundId: data.nextRoundId || "",
             name: data.name || "",
             description: data.description || "",
-            rawTimeLimit: roundRangeToMinutes.findIndex(
-              (m) => m === data.timeLimitInMinutes
-            ),
+            rawTimeLimit:
+              rawTimeLimit !== -1
+                ? rawTimeLimit
+                : roundRangeToMinutes.length - 1,
           });
         }
       },
@@ -74,7 +79,7 @@ const EditRound = ({ id }: { id: string }) => {
     register,
     handleSubmit,
     watch,
-    formState: { isDirty, isValid },
+    formState: { isDirty, dirtyFields, isValid },
   } = useForm({
     defaultValues: {
       nextRoundId: round?.nextRoundId || "",
@@ -87,15 +92,21 @@ const EditRound = ({ id }: { id: string }) => {
   });
   const ctx = api.useContext();
   const updateRound = api.round.update.useMutation({
-    onSuccess: (_, variables) => {
-      void refetch();
-      if (round?.name !== variables.name) {
+    onSuccess: () => {
+      if (dirtyFields.name) {
         void ctx.round.getForGame.invalidate();
       }
+      void refetch();
     },
     onError: handleErrorClientSide,
   });
-  const deleteRound = api.round.delete.useMutation();
+  const router = useRouter();
+  const deleteRound = api.round.delete.useMutation({
+    onSuccess: async (data) => {
+      await ctx.round.getForGame.invalidate();
+      return router.push("/edit/[gameId]", `/edit/${data.gameId}`);
+    },
+  });
   const rawTimeLimit = watch("rawTimeLimit");
 
   if (!round) {
@@ -200,8 +211,16 @@ const EditRound = ({ id }: { id: string }) => {
 };
 
 const Edit = () => {
-  const { roundId } = useRouter().query;
-  if (!roundId) {
+  const {
+    push,
+    query: { roundId },
+  } = useRouter();
+  const session = useSession();
+
+  if (session.status === "unauthenticated") {
+    void push("/");
+  }
+  if (!roundId || session.status !== "authenticated") {
     return <Loader />;
   }
   if (Array.isArray(roundId)) {

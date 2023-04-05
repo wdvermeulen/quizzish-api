@@ -51,7 +51,7 @@ export const slideRouter = createTRPCRouter({
           },
         },
         include: {
-          answerOptions: { orderBy: { index: "asc" } },
+          answerOptions: { select: { id: true }, orderBy: { index: "asc" } },
           images: true,
         },
       })
@@ -121,32 +121,30 @@ export const slideRouter = createTRPCRouter({
       });
     }),
   delete: protectedProcedure
-    .input(z.object({ slideId: z.string().cuid() }))
-    .mutation(({ ctx, input: { slideId } }) =>
-      ctx.prisma.slide
-        .delete({
-          where: {
-            userId_id: {
-              id: slideId,
-              userId: ctx.session.user.id,
-            },
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ ctx, input: { id } }) => {
+      const removedSlide = await ctx.prisma.slide.delete({
+        where: {
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
           },
-        })
-        .then((data) =>
-          ctx.prisma.slide.updateMany({
-            where: {
-              userId: ctx.session.user.id,
-              roundId: data.roundId,
-              index: {
-                gt: data.index,
-              },
-            },
-            data: {
-              index: {
-                decrement: 1,
-              },
-            },
-          })
-        )
-    ),
+        },
+      });
+      await ctx.prisma.slide.updateMany({
+        where: {
+          userId: ctx.session.user.id,
+          roundId: removedSlide.roundId,
+          index: {
+            gt: removedSlide.index,
+          },
+        },
+        data: {
+          index: {
+            decrement: 1,
+          },
+        },
+      });
+      return removedSlide;
+    }),
 });

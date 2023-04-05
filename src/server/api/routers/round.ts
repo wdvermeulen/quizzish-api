@@ -90,7 +90,7 @@ export const roundRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(({ ctx, input: { id } }) =>
-      ctx.prisma.round.findUnique({
+      ctx.prisma.round.findUniqueOrThrow({
         where: { userId_id: { userId: ctx.session.user.id, id } },
       })
     ),
@@ -104,7 +104,19 @@ export const roundRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(async ({ ctx, input: { id } }) => {
-      const removedRound = await ctx.prisma.round.delete({
+      const removedRound = await ctx.prisma.round.findUniqueOrThrow({
+        where: { userId_id: { userId: ctx.session.user.id, id } },
+      });
+      await ctx.prisma.round.updateMany({
+        where: {
+          userId: ctx.session.user.id,
+          nextRoundId: id,
+        },
+        data: {
+          nextRoundId: removedRound.nextRoundId,
+        },
+      });
+      await ctx.prisma.round.delete({
         where: {
           userId_id: {
             id,
@@ -112,31 +124,20 @@ export const roundRouter = createTRPCRouter({
           },
         },
       });
-      await Promise.all([
-        ctx.prisma.round.updateMany({
-          where: {
-            userId: ctx.session.user.id,
-            gameId: removedRound.gameId,
-            index: {
-              gt: removedRound.index,
-            },
+      void ctx.prisma.round.updateMany({
+        where: {
+          userId: ctx.session.user.id,
+          gameId: removedRound.gameId,
+          index: {
+            gt: removedRound.index,
           },
-          data: {
-            index: {
-              decrement: 1,
-            },
+        },
+        data: {
+          index: {
+            decrement: 1,
           },
-        }),
-        ctx.prisma.round.updateMany({
-          where: {
-            userId: ctx.session.user.id,
-            nextRoundId: id,
-          },
-          data: {
-            nextRoundId: removedRound.nextRoundId,
-          },
-        }),
-      ]);
+        },
+      });
       return removedRound;
     }),
 });

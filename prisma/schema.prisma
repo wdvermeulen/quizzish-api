@@ -125,6 +125,7 @@ model Slide {
   round              Round          @relation(fields: [roundId], references: [id], onDelete: Cascade)
   timeLimitInSeconds Int?
   description        String?        @db.VarChar(512)
+  previousAnswer     AnswerOption[] @relation("NextSlide")
   answerOptions      AnswerOption[]
   manualCheck        Boolean        @default(false)
   instantCheck       Boolean        @default(true)
@@ -144,10 +145,12 @@ model AnswerOption {
   userId        String
   slideId       String
   slide         Slide   @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  nextSlideId   String?
+  nextSlide     Slide?  @relation("NextSlide", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   description   String? @db.VarChar(512)
   numericAnswer Int?
   isCorrect     Boolean @default(false)
-  earlyPoints   Int?    @default(100)
+  earlyPoints   Int?    @default(10)
   latePoints    Int?    @default(0)
 
   @@unique([userId, id])

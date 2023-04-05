@@ -38,7 +38,15 @@ function Slides({ gameId, roundId }: { gameId: string; roundId: string }) {
   );
 }
 
-function SidebarRound({ round, gameId }: { round: Round; gameId: string }) {
+function SidebarRound({
+  round,
+  gameId,
+  isLoading,
+}: {
+  round: Round;
+  gameId: string;
+  isLoading: boolean;
+}) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(
     router.asPath.startsWith(`/edit/${gameId}/${round.id}`)
@@ -58,8 +66,12 @@ function SidebarRound({ round, gameId }: { round: Round; gameId: string }) {
     setIsExpanded(router.asPath.startsWith(`/edit/${gameId}/${round.id}`));
   }, [router.asPath]);
 
-  if (!round) {
+  if (isLoading) {
     return <Loader />;
+  }
+
+  if (!round) {
+    return null;
   }
 
   return (
@@ -107,7 +119,11 @@ const Sidebar = ({ gameId }: { gameId: string }) => {
     onError: handleErrorClientSide,
   });
 
-  const { data: rounds, refetch } = api.round.getForGame.useQuery({
+  const {
+    data: rounds,
+    refetch,
+    isLoading,
+  } = api.round.getForGame.useQuery({
     gameId,
   });
 
@@ -138,7 +154,12 @@ const Sidebar = ({ gameId }: { gameId: string }) => {
         {rounds ? (
           <>
             {rounds.map((round) => (
-              <SidebarRound key={round.id} round={round} gameId={gameId} />
+              <SidebarRound
+                key={round.id}
+                round={round}
+                gameId={gameId}
+                isLoading={isLoading}
+              />
             ))}
             <li>
               <button
