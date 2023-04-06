@@ -6,8 +6,15 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { api, handleErrorClientSide } from "utils/api";
 import { minutesToString } from "utils/time";
+import { CheckMethod, Slide, SlideType } from "@prisma/client";
 
-const EditAnswerOption = ({ id }: { id: string }) => {
+const EditAnswerOption = ({
+  id,
+  checkMethod,
+}: {
+  id: string;
+  checkMethod: CheckMethod;
+}) => {
   const { data: answerOption, isLoading } = api.answerOption.get.useQuery(
     { id },
     {
@@ -92,23 +99,25 @@ const EditAnswerOption = ({ id }: { id: string }) => {
                 />
               </div>
             </article>
-            <article className="card flex-1 bg-base-100 shadow-xl">
-              <div className="card-body">
-                <label className="card-title" htmlFor="isCorrect">
-                  Correct antwoord?
-                </label>
-                <div className="flex gap-2">
-                  Niet goed
-                  <input
-                    id="isCorrect"
-                    type="checkbox"
-                    className="toggle"
-                    {...register("isCorrect")}
-                  />
-                  Goed
+            {checkMethod === CheckMethod.INSTANT && (
+              <article className="card flex-1 bg-base-100 shadow-xl">
+                <div className="card-body">
+                  <label className="card-title" htmlFor="isCorrect">
+                    Correct antwoord?
+                  </label>
+                  <div className="flex gap-2">
+                    Niet goed
+                    <input
+                      id="isCorrect"
+                      type="checkbox"
+                      className="toggle"
+                      {...register("isCorrect")}
+                    />
+                    Goed
+                  </div>
                 </div>
-              </div>
-            </article>
+              </article>
+            )}
             <article className="card flex-1 bg-base-100 shadow-xl">
               <fieldset className="card-body">
                 <legend className="card-title float-left">Waarde</legend>
@@ -175,17 +184,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     {
       onSuccess: (data) => {
         if (data) {
-          const rawTimeLimit = slideRangeToSeconds.findIndex(
-            (m) => m === data.timeLimitInSeconds
-          );
-          reset({
-            name: data.name || "",
-            description: data.description || "",
-            rawTimeLimit:
-              rawTimeLimit !== -1
-                ? rawTimeLimit
-                : slideRangeToSeconds.length - 1,
-          });
+          reset(formifySlide(data));
         }
       },
     }
@@ -195,6 +194,16 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     void refetch();
   }, [id]);
 
+  const formifySlide = (slide: Slide | undefined) => ({
+    name: slide?.name || "",
+    description: slide?.description || "",
+    rawTimeLimit: slide
+      ? slideRangeToSeconds.findIndex((m) => m === slide.timeLimitInSeconds)
+      : slideRangeToSeconds.length - 1,
+    type: slide?.type || SlideType.MULTIPLE_CHOICE,
+    checkMethod: slide?.checkMethod || CheckMethod.INSTANT,
+  });
+
   const {
     reset,
     register,
@@ -202,13 +211,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     watch,
     formState: { isDirty, dirtyFields, isValid },
   } = useForm({
-    defaultValues: {
-      name: slide?.name || "",
-      description: slide?.description || "",
-      rawTimeLimit: slide
-        ? slideRangeToSeconds.findIndex((m) => m === slide.timeLimitInSeconds)
-        : slideRangeToSeconds.length - 1,
-    },
+    defaultValues: formifySlide(slide),
   });
   const ctx = api.useContext();
   const updateSlide = api.slide.update.useMutation({
@@ -242,111 +245,206 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     return <div>Kon deze slide niet vinden</div>;
   }
 
+  const checkMethod = watch("checkMethod");
+  const type = watch("type");
+
   return (
-    <form
-      className="flex min-h-full flex-col justify-between gap-4 pb-4"
-      onSubmit={handleSubmit((data) => {
-        updateSlide.mutate({
-          id,
-          ...data,
-          name: data.name || "",
-          timeLimitInSeconds: slideRangeToSeconds[data.rawTimeLimit],
-        });
-      })}
-    >
-      <div className="flex flex-wrap gap-4">
-        <article className="card flex-1 bg-base-100 shadow-xl">
-          <div className="card-body">
-            <label className="card-title" htmlFor="name">
-              Naam van deze slide
-            </label>
-            <input
-              id="name"
-              type="text"
-              className="input-bordered input"
-              maxLength={128}
-              {...register("name", {
-                maxLength: {
-                  value: 128,
-                  message: "Mag niet langer zijn dan 128 karakters",
-                },
-              })}
-            />
-          </div>
-        </article>
-        <article className="card flex-1 bg-base-100 shadow-xl">
-          <div className="card-body">
-            <div className="form-control">
-              <label className="card-title" htmlFor="description">
-                Omschrijving of vraag
+    <div className="flex min-h-full flex-col justify-between gap-4 pb-4">
+      <form
+        className="flex flex-col justify-between gap-4"
+        onSubmit={handleSubmit((data) => {
+          updateSlide.mutate({
+            id,
+            ...data,
+            name: data.name || "",
+            timeLimitInSeconds: slideRangeToSeconds[data.rawTimeLimit],
+          });
+        })}
+      >
+        <div className="flex flex-wrap gap-4">
+          <article className="card flex-1 bg-base-100 shadow-xl">
+            <div className="card-body">
+              <label className="card-title" htmlFor="name">
+                Naam van deze slide
               </label>
-              <textarea
-                maxLength={512}
-                className="textarea-bordered textarea h-24"
-                id="description"
-                {...register("description", {
+              <input
+                id="name"
+                type="text"
+                className="input-bordered input"
+                maxLength={128}
+                {...register("name", {
                   maxLength: {
-                    value: 512,
-                    message: "Mag niet langer zijn dan 512 karakters",
+                    value: 128,
+                    message: "Mag niet langer zijn dan 128 karakters",
                   },
                 })}
-              ></textarea>
+              />
             </div>
-          </div>
-        </article>
-        <article className="card flex-1 bg-base-100 shadow-xl">
-          <div className="card-body">
-            <label className="card-title" htmlFor="time-limit">
-              Tijdslimiet
-            </label>
-            <input
-              id="time-limit"
-              type="range"
-              min="0"
-              max={slideRangeToSeconds.length - 1}
-              className="range"
-              step="1"
-              aria-valuetext={minutesToString(
-                slideRangeToSeconds[rawTimeLimit]
-              )}
-              {...register("rawTimeLimit")}
-            />
-            <p className="text-center">
-              {minutesToString(slideRangeToSeconds[rawTimeLimit])}
-            </p>
-          </div>
-        </article>
-      </div>
+          </article>
+          <article className="card flex-1 bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="form-control">
+                <label className="card-title" htmlFor="description">
+                  Omschrijving of vraag
+                </label>
+                <textarea
+                  maxLength={512}
+                  className="textarea-bordered textarea h-24"
+                  id="description"
+                  {...register("description", {
+                    maxLength: {
+                      value: 512,
+                      message: "Mag niet langer zijn dan 512 karakters",
+                    },
+                  })}
+                ></textarea>
+              </div>
+            </div>
+          </article>
+          <article className="card flex-1 bg-base-100 shadow-xl">
+            <div className="card-body">
+              <label className="card-title" htmlFor="time-limit">
+                Tijdslimiet
+              </label>
+              <input
+                id="time-limit"
+                type="range"
+                min="0"
+                max={slideRangeToSeconds.length - 1}
+                className="range"
+                step="1"
+                aria-valuetext={minutesToString(
+                  slideRangeToSeconds[rawTimeLimit]
+                )}
+                {...register("rawTimeLimit")}
+              />
+              <p className="text-center">
+                {minutesToString(slideRangeToSeconds[rawTimeLimit])}
+              </p>
+            </div>
+          </article>
+          <article className="card flex-1 bg-base-100 shadow-xl">
+            <fieldset className="card-body">
+              <legend className="card-title float-left">Type</legend>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Tekst</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={SlideType.TEXT}
+                  {...register("type")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Open</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={SlideType.OPEN}
+                  {...register("type")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Multiple choice</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={SlideType.MULTIPLE_CHOICE}
+                  {...register("type")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Multiple select</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={SlideType.MULTIPLE_SELECT}
+                  {...register("type")}
+                />
+              </label>
+            </fieldset>
+          </article>
+          <article className="card flex-1 bg-base-100 shadow-xl">
+            <fieldset className="card-body">
+              <legend className="card-title float-left">Controle</legend>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Direct</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={CheckMethod.INSTANT}
+                  {...register("checkMethod")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Handmatig</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={CheckMethod.MANUAL}
+                  {...register("checkMethod")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Stemmen</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={CheckMethod.VOTE}
+                  {...register("checkMethod")}
+                />
+              </label>
+              <label className="label cursor-pointer">
+                <span className="label-text mr-4">Geen</span>
+                <input
+                  type="radio"
+                  className="radio"
+                  value={CheckMethod.NONE}
+                  {...register("checkMethod")}
+                />
+              </label>
+            </fieldset>
+          </article>
+        </div>
+        <div className="flex flex-wrap justify-between">
+          <button
+            type="button"
+            className="btn-outline btn"
+            onClick={() => deleteSlide.mutate({ id })}
+            disabled={updateSlide.isLoading}
+          >
+            Slide verwijderen
+          </button>
+          <button
+            className="btn-primary btn"
+            disabled={updateSlide.isLoading || !isDirty || !isValid}
+          >
+            Bewerkingen opslaan
+          </button>
+        </div>
+      </form>
       <hr />
-      {slide?.answerOptions.map((answerOption) => (
+      {type !== SlideType.TEXT && type !== SlideType.OPEN && (
         <>
-          <EditAnswerOption key={answerOption.id} id={answerOption.id} />
-          <hr />
+          {slide?.answerOptions.map((answerOption) => (
+            <>
+              <EditAnswerOption
+                key={answerOption.id}
+                id={answerOption.id}
+                checkMethod={checkMethod}
+              />
+              <hr />
+            </>
+          ))}
+          <button
+            className="btn-primary btn"
+            onClick={() => createAnswerOption.mutate({ slideId: id })}
+          >
+            Nieuw antwoord
+          </button>
         </>
-      ))}
-      <button
-        className="btn-primary btn"
-        onClick={() => createAnswerOption.mutate({ slideId: id })}
-      >
-        Nieuw antwoord
-      </button>
-      <div className="flex flex-wrap justify-between">
-        <button
-          type="button"
-          className="btn-primary btn"
-          onClick={() => deleteSlide.mutate({ id })}
-          disabled={updateSlide.isLoading}
-        >
-          Slide verwijderen
-        </button>
-        <button
-          className="btn-primary btn"
-          disabled={updateSlide.isLoading || !isDirty || !isValid}
-        >
-          Bewerkingen opslaan
-        </button>
-      </div>
-    </form>
+      )}
+    </div>
   );
 };
 

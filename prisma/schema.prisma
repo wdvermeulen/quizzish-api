@@ -127,8 +127,7 @@ model Slide {
   description        String?        @db.VarChar(512)
   previousAnswer     AnswerOption[] @relation("NextSlide")
   answerOptions      AnswerOption[]
-  manualCheck        Boolean        @default(false)
-  instantCheck       Boolean        @default(true)
+  checkMethod        CheckMethod    @default(INSTANT)
   explanation        String?        @db.VarChar(512)
   largeText          String?        @db.Text
   media              String?        @db.VarChar(128)
@@ -181,4 +180,11 @@ enum SlideType {
   OPEN
   MULTIPLE_SELECT
   PUZZLE
+}
+
+enum CheckMethod {
+  MANUAL
+  INSTANT
+  VOTE
+  NONE
 }

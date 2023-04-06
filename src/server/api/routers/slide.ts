@@ -1,4 +1,4 @@
-import { SlideType } from "@prisma/client";
+import { CheckMethod, SlideType } from "@prisma/client";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -76,8 +76,7 @@ export const slideRouter = createTRPCRouter({
         description: z.optional(z.string().min(1).max(512)),
         name: z.optional(z.string().min(1).max(128).or(z.null())),
         timeLimitInSeconds: z.optional(z.number().min(1).or(z.null())),
-        manualCheck: z.optional(z.boolean()),
-        instantCheck: z.optional(z.boolean()),
+        checkMethod: z.optional(z.nativeEnum(CheckMethod)),
         explanation: z.optional(z.string().min(1).max(512).or(z.null())),
         largeText: z.optional(z.string().min(1).max(16777215).or(z.null())),
         media: z.optional(z.string().min(1).max(128).or(z.null())),
