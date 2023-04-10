@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { api, handleErrorClientSide } from "utils/api";
 import { minutesToString } from "utils/time";
+import Textarea from "components/form/text-area";
 
 const NextRound = ({
   nextRoundIdInput,
@@ -72,7 +73,7 @@ const EditRound = ({ id }: { id: string }) => {
 
   useEffect(() => {
     void refetch();
-  }, [id]);
+  }, [id, refetch]);
 
   const {
     reset,
@@ -131,12 +132,10 @@ const EditRound = ({ id }: { id: string }) => {
             <label className="card-title" htmlFor="name">
               Naam van deze ronde
             </label>
-            <input
+            <Textarea
               id="name"
-              type="text"
-              className="input-bordered input"
               maxLength={128}
-              {...register("name", {
+              register={register("name", {
                 maxLength: {
                   value: 128,
                   message: "Mag niet langer zijn dan 128 karakters",
@@ -150,17 +149,16 @@ const EditRound = ({ id }: { id: string }) => {
             <label className="card-title" htmlFor="description">
               Omschrijving
             </label>
-            <textarea
+            <Textarea
               id="description"
               maxLength={1024}
-              className="textarea-bordered textarea h-24"
-              {...register("description", {
+              register={register("description", {
                 maxLength: {
                   value: 1024,
                   message: "Mag niet langer zijn dan 1024 karakters",
                 },
               })}
-            ></textarea>
+            />
           </div>
         </article>
         <article className="card flex-1 bg-base-100 shadow-xl">

@@ -7,13 +7,6 @@ export const slideRouter = createTRPCRouter({
     .input(
       z.object({
         roundId: z.string().cuid(),
-        type: z.optional(z.nativeEnum(SlideType)),
-        description: z.optional(z.string().min(1).max(512)),
-        name: z.optional(z.string().min(1).max(128).or(z.null())),
-        timeLimitInSeconds: z.optional(z.number().min(1).or(z.null())),
-        explanation: z.optional(z.string().min(1).max(512).or(z.null())),
-        largeText: z.optional(z.string().min(1).max(16777215).or(z.null())),
-        media: z.optional(z.string().min(1).max(128).or(z.null())),
       })
     )
     .mutation(({ input, ctx }) =>
@@ -33,7 +26,7 @@ export const slideRouter = createTRPCRouter({
         .then((data) =>
           ctx.prisma.slide.create({
             data: {
-              ...input,
+              roundId: input.roundId,
               index: (data?.index ?? 0) + 1,
               userId: ctx.session.user.id,
             },
@@ -51,7 +44,10 @@ export const slideRouter = createTRPCRouter({
           },
         },
         include: {
-          answerOptions: { select: { id: true }, orderBy: { index: "asc" } },
+          multipleChoiceOptions: {
+            select: { id: true },
+            orderBy: { index: "asc" },
+          },
           images: true,
         },
       })
@@ -70,16 +66,16 @@ export const slideRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().cuid(),
-        index: z.optional(z.number().min(1)),
-        type: z.optional(z.nativeEnum(SlideType)),
-        roundId: z.optional(z.string().cuid()),
-        description: z.optional(z.string().min(1).max(512)),
-        name: z.optional(z.string().min(1).max(128).or(z.null())),
-        timeLimitInSeconds: z.optional(z.number().min(1).or(z.null())),
-        checkMethod: z.optional(z.nativeEnum(CheckMethod)),
-        explanation: z.optional(z.string().min(1).max(512).or(z.null())),
-        largeText: z.optional(z.string().min(1).max(16777215).or(z.null())),
-        media: z.optional(z.string().min(1).max(128).or(z.null())),
+        index: z.number().min(1).optional(),
+        type: z.nativeEnum(SlideType).optional(),
+        roundId: z.string().cuid().optional(),
+        description: z.string().min(1).max(512).optional(),
+        name: z.string().min(1).max(128).nullish(),
+        timeLimitInSeconds: z.number().min(1).nullish(),
+        checkMethod: z.nativeEnum(CheckMethod).optional(),
+        explanation: z.string().min(1).max(512).nullish(),
+        largeText: z.string().min(1).max(16777215).nullish(),
+        media: z.string().min(1).max(128).nullish(),
       })
     )
     .mutation(async ({ ctx, input: { id, ...data } }) => {

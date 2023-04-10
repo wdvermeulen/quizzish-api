@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { api, handleErrorClientSide } from "utils/api";
 import { minutesToString } from "utils/time";
+import Textarea from "components/form/text-area";
 
 const gameRangeToMinutes = [15, 30, 45, 60, 90, 120, 180, 360, 480, 960, 1440];
 
@@ -80,26 +81,22 @@ const GameSettings = ({ id }: { id: string }) => {
       <div className="flex flex-wrap gap-4">
         <article className="card flex-1 bg-base-100 shadow-xl">
           <fieldset className="card-body">
-            <div className="form-control">
-              <label className="card-title" htmlFor="name">
-                Naam van dit spel
-              </label>
-              <input
-                id="name"
-                type="text"
-                placeholder="Quizzish"
-                className="input-bordered input"
-                maxLength={64}
-                {...register("name", {
-                  required: "Dit veld is verplicht",
-                  maxLength: {
-                    value: 64,
-                    message: "Mag niet langer zijn dan 64 karakters",
-                  },
-                })}
-              />
-              <p className="text-error">{errors.name?.message}</p>
-            </div>
+            <label className="card-title" htmlFor="name">
+              Naam van dit spel
+            </label>
+            <Textarea
+              id="name"
+              placeholder="Quizzish"
+              maxLength={64}
+              register={register("name", {
+                required: "Dit veld is verplicht",
+                maxLength: {
+                  value: 64,
+                  message: "Mag niet langer zijn dan 64 karakters",
+                },
+              })}
+            />
+            <p className="text-error">{errors.name?.message}</p>
           </fieldset>
         </article>
         <article className="card flex-1 bg-base-100 shadow-xl">
@@ -148,17 +145,16 @@ const GameSettings = ({ id }: { id: string }) => {
             <label className="card-title" htmlFor="description">
               Omschrijving
             </label>
-            <textarea
+            <Textarea
               id="description"
               maxLength={1024}
-              className="textarea-bordered textarea h-24"
-              {...register("description", {
+              register={register("description", {
                 maxLength: {
                   value: 1024,
                   message: "Mag niet langer zijn dan 1024 karakters",
                 },
               })}
-            ></textarea>
+            />
           </div>
         </article>
         <article className="card flex-1 bg-base-100 shadow-xl">

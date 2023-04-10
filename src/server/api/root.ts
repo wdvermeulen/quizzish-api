@@ -1,4 +1,4 @@
-import { answerOptionRouter } from "./routers/answer-option";
+import { multipleChoiceOptionRouter } from "./routers/multiple-choice-option";
 import { imageRouter } from "./routers/image";
 import { gameRouter } from "./routers/game";
 import { roomRouter } from "./routers/room";
@@ -12,7 +12,7 @@ import { createTRPCRouter } from "./trpc";
  * All routers added in /api/routers should be manually added here
  */
 export const appRouter = createTRPCRouter({
-  answerOption: answerOptionRouter,
+  multipleChoiceOption: multipleChoiceOptionRouter,
   image: imageRouter,
   game: gameRouter,
   room: roomRouter,

@@ -6,7 +6,6 @@ export const roundRouter = createTRPCRouter({
     .input(
       z.object({
         gameId: z.string().cuid(),
-        name: z.optional(z.string().max(128)),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -25,7 +24,7 @@ export const roundRouter = createTRPCRouter({
       });
       const newRound = await ctx.prisma.round.create({
         data: {
-          ...input,
+          gameId: input.gameId,
           index: (lastRound?.index ?? 0) + 1,
           userId: ctx.session.user.id,
         },
@@ -46,10 +45,10 @@ export const roundRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string().cuid(),
-        index: z.optional(z.number().min(1)),
-        name: z.optional(z.string().min(1).max(128).or(z.null())),
-        timeLimitInMinutes: z.optional(z.number().or(z.null())),
-        description: z.optional(z.string().min(1).max(1024).or(z.null())),
+        index: z.number().min(1).optional(),
+        name: z.string().min(1).max(128).nullish(),
+        timeLimitInMinutes: z.number().nullish(),
+        description: z.string().min(1).max(1024).nullish(),
       })
     )
     .mutation(async ({ ctx, input: { id, ...data } }) => {
