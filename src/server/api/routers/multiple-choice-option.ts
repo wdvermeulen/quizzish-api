@@ -1,19 +1,15 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
-export const answerOptionRouter = createTRPCRouter({
+export const multipleChoiceOptionRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
         slideId: z.string().cuid(),
-        description: z.optional(z.string().max(512)),
-        isCorrect: z.optional(z.optional(z.boolean())),
-        earlyPoints: z.optional(z.number()),
-        latePoints: z.optional(z.number()),
       })
     )
     .mutation(({ input, ctx }) =>
-      ctx.prisma.answerOption
+      ctx.prisma.multipleChoiceOption
         .findFirst({
           where: {
             userId: ctx.session.user.id,
@@ -27,9 +23,9 @@ export const answerOptionRouter = createTRPCRouter({
           },
         })
         .then((data) =>
-          ctx.prisma.answerOption.create({
+          ctx.prisma.multipleChoiceOption.create({
             data: {
-              ...input,
+              slideId: input.slideId,
               index: (data?.index ?? 0) + 1,
               userId: ctx.session.user.id,
             },
@@ -39,7 +35,7 @@ export const answerOptionRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(({ ctx, input: { id } }) =>
-      ctx.prisma.answerOption.findUniqueOrThrow({
+      ctx.prisma.multipleChoiceOption.findUniqueOrThrow({
         where: {
           userId_id: {
             id,
@@ -63,34 +59,35 @@ export const answerOptionRouter = createTRPCRouter({
     .mutation(async ({ ctx, input: { id, ...data } }) => {
       const index = data.index;
       if (index) {
-        const answerOption = await ctx.prisma.answerOption.findUniqueOrThrow({
-          where: {
-            userId_id: {
-              id,
-              userId: ctx.session.user.id,
+        const multipleChoiceOption =
+          await ctx.prisma.multipleChoiceOption.findUniqueOrThrow({
+            where: {
+              userId_id: {
+                id,
+                userId: ctx.session.user.id,
+              },
             },
-          },
-        });
-        if (answerOption.index !== index) {
-          await ctx.prisma.answerOption.updateMany({
+          });
+        if (multipleChoiceOption.index !== index) {
+          await ctx.prisma.multipleChoiceOption.updateMany({
             where: {
               userId: ctx.session.user.id,
-              slideId: answerOption.slideId,
+              slideId: multipleChoiceOption.slideId,
               index: {
-                gte: Math.min(answerOption.index, index),
-                lte: Math.max(answerOption.index, index),
+                gte: Math.min(multipleChoiceOption.index, index),
+                lte: Math.max(multipleChoiceOption.index, index),
               },
             },
             data: {
               index:
-                index > answerOption.index
+                index > multipleChoiceOption.index
                   ? { decrement: 1 }
                   : { increment: 1 },
             },
           });
         }
       }
-      return ctx.prisma.answerOption.update({
+      return ctx.prisma.multipleChoiceOption.update({
         where: {
           userId_id: {
             id,
@@ -103,7 +100,7 @@ export const answerOptionRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(({ ctx, input: { id } }) =>
-      ctx.prisma.answerOption
+      ctx.prisma.multipleChoiceOption
         .delete({
           where: {
             userId_id: {
@@ -113,7 +110,7 @@ export const answerOptionRouter = createTRPCRouter({
           },
         })
         .then((data) =>
-          ctx.prisma.answerOption.updateMany({
+          ctx.prisma.multipleChoiceOption.updateMany({
             where: {
               userId: ctx.session.user.id,
               slideId: data.slideId,

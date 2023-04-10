@@ -4,31 +4,20 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const gameRouter = createTRPCRouter({
-  create: protectedProcedure
-    .input(
-      z
-        .object({
-          name: z.optional(z.string().min(1).max(64)),
-          type: z.optional(z.nativeEnum(GameType)),
-          timeLimitInMinutes: z.optional(z.number().min(1)),
-        })
-        .nullish()
-    )
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.game.create({
-        data: {
-          ...input,
-          userId: ctx.session.user.id,
-        },
-      })
-    ),
+  create: protectedProcedure.mutation(({ ctx }) =>
+    ctx.prisma.game.create({
+      data: {
+        userId: ctx.session.user.id,
+      },
+    })
+  ),
   update: protectedProcedure
     .input(
       z.object({
         id: z.string().cuid(),
-        name: z.optional(z.string().min(1).max(64)),
-        type: z.optional(z.nativeEnum(GameType)),
-        timeLimitInMinutes: z.optional(z.number().min(1)),
+        name: z.string().min(1).max(64).optional(),
+        type: z.nativeEnum(GameType).optional(),
+        timeLimitInMinutes: z.number().min(1).optional(),
       })
     )
     .mutation(({ ctx, input: { id, ...data } }) =>

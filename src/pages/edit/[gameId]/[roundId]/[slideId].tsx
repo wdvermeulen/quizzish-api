@@ -2,55 +2,62 @@ import EditLayout from "components/layout/edit-layout";
 import { Loader } from "components/loader";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { api, handleErrorClientSide } from "utils/api";
-import { minutesToString } from "utils/time";
-import { CheckMethod, Slide, SlideType } from "@prisma/client";
+import { secondsToString } from "utils/time";
+import {
+  CheckMethod,
+  type MultipleChoiceOption,
+  type Slide,
+  SlideType,
+} from "@prisma/client";
+import Textarea from "components/form/text-area";
 
-const EditAnswerOption = ({
+const EditMultipleChoiceOption = ({
   id,
   checkMethod,
 }: {
   id: string;
   checkMethod: CheckMethod;
 }) => {
-  const { data: answerOption, isLoading } = api.answerOption.get.useQuery(
-    { id },
-    {
-      onSuccess: (data) => {
-        if (data) {
-          reset({
-            isCorrect: answerOption?.isCorrect || false,
-            description: answerOption?.description || "",
-            earlyPoints: answerOption?.earlyPoints || 0,
-            latePoints: answerOption?.latePoints || 0,
-          });
-        }
-      },
-    }
-  );
+  const { data: multipleChoiceOption, isLoading } =
+    api.multipleChoiceOption.get.useQuery(
+      { id },
+      {
+        onSuccess: (data) => {
+          if (data) {
+            reset();
+          }
+        },
+      }
+    );
+
+  const multipleChoiceOptionToDefaultFormValues = (
+    multipleChoiceOption?: MultipleChoiceOption
+  ) => ({
+    isCorrect: multipleChoiceOption?.isCorrect || false,
+    description: multipleChoiceOption?.description || "",
+    earlyPoints: multipleChoiceOption?.earlyPoints || 0,
+    latePoints: multipleChoiceOption?.latePoints || 0,
+  });
 
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isDirty, isValid },
+    formState: { isDirty, isValid },
     reset,
   } = useForm({
-    defaultValues: {
-      isCorrect: answerOption?.isCorrect || false,
-      description: answerOption?.description || "",
-      earlyPoints: answerOption?.earlyPoints || 0,
-      latePoints: answerOption?.latePoints || 0,
-    },
+    defaultValues:
+      multipleChoiceOptionToDefaultFormValues(multipleChoiceOption),
   });
 
-  const updateAnswerOption = api.answerOption.update.useMutation({
+  const updateAnswerOption = api.multipleChoiceOption.update.useMutation({
     onError: handleErrorClientSide,
   });
 
-  const deleteAnswerOption = api.answerOption.delete.useMutation({
+  const deleteAnswerOption = api.multipleChoiceOption.delete.useMutation({
     onError: handleErrorClientSide,
   });
 
@@ -58,7 +65,7 @@ const EditAnswerOption = ({
     return <Loader />;
   }
 
-  if (!answerOption) {
+  if (!multipleChoiceOption) {
     return <div>Antwoord niet gevonden</div>;
   }
 
@@ -66,7 +73,7 @@ const EditAnswerOption = ({
     <div className="collapse">
       <input type="checkbox" />
       <div className="collapse-title text-xl font-medium">
-        Antwoord {answerOption.index}
+        Antwoord {multipleChoiceOption.index}
       </div>
       <div className="collapse-content">
         <form
@@ -184,7 +191,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     {
       onSuccess: (data) => {
         if (data) {
-          reset(formifySlide(data));
+          reset(slideToFormDefaults(data));
         }
       },
     }
@@ -192,9 +199,9 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
 
   useEffect(() => {
     void refetch();
-  }, [id]);
+  }, [id, refetch]);
 
-  const formifySlide = (slide: Slide | undefined) => ({
+  const slideToFormDefaults = (slide?: Slide) => ({
     name: slide?.name || "",
     description: slide?.description || "",
     rawTimeLimit: slide
@@ -202,6 +209,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
       : slideRangeToSeconds.length - 1,
     type: slide?.type || SlideType.MULTIPLE_CHOICE,
     checkMethod: slide?.checkMethod || CheckMethod.INSTANT,
+    statementIsTrue: slide?.statementIsTrue,
   });
 
   const {
@@ -211,7 +219,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     watch,
     formState: { isDirty, dirtyFields, isValid },
   } = useForm({
-    defaultValues: formifySlide(slide),
+    defaultValues: slideToFormDefaults(slide),
   });
   const ctx = api.useContext();
   const updateSlide = api.slide.update.useMutation({
@@ -230,7 +238,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     },
     onError: handleErrorClientSide,
   });
-  const createAnswerOption = api.answerOption.create.useMutation({
+  const multipleChoiceOption = api.multipleChoiceOption.create.useMutation({
     onSuccess: () => void refetch(),
     onError: handleErrorClientSide,
   });
@@ -267,12 +275,10 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
               <label className="card-title" htmlFor="name">
                 Naam van deze slide
               </label>
-              <input
-                id="name"
-                type="text"
-                className="input-bordered input"
+              <Textarea
                 maxLength={128}
-                {...register("name", {
+                id="name"
+                register={register("name", {
                   maxLength: {
                     value: 128,
                     message: "Mag niet langer zijn dan 128 karakters",
@@ -283,22 +289,19 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
           </article>
           <article className="card flex-1 bg-base-100 shadow-xl">
             <div className="card-body">
-              <div className="form-control">
-                <label className="card-title" htmlFor="description">
-                  Omschrijving of vraag
-                </label>
-                <textarea
-                  maxLength={512}
-                  className="textarea-bordered textarea h-24"
-                  id="description"
-                  {...register("description", {
-                    maxLength: {
-                      value: 512,
-                      message: "Mag niet langer zijn dan 512 karakters",
-                    },
-                  })}
-                ></textarea>
-              </div>
+              <label className="card-title" htmlFor="description">
+                Omschrijving of vraag
+              </label>
+              <Textarea
+                maxLength={512}
+                id="description"
+                register={register("description", {
+                  maxLength: {
+                    value: 512,
+                    message: "Mag niet langer zijn dan 512 karakters",
+                  },
+                })}
+              />
             </div>
           </article>
           <article className="card flex-1 bg-base-100 shadow-xl">
@@ -313,25 +316,27 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
                 max={slideRangeToSeconds.length - 1}
                 className="range"
                 step="1"
-                aria-valuetext={minutesToString(
+                aria-valuetext={secondsToString(
                   slideRangeToSeconds[rawTimeLimit]
                 )}
                 {...register("rawTimeLimit")}
               />
               <p className="text-center">
-                {minutesToString(slideRangeToSeconds[rawTimeLimit])}
+                {secondsToString(slideRangeToSeconds[rawTimeLimit])}
               </p>
             </div>
           </article>
           <article className="card flex-1 bg-base-100 shadow-xl">
             <fieldset className="card-body">
-              <legend className="card-title float-left">Type</legend>
+              <legend className="card-title float-left">Soort vraag</legend>
               <label className="label cursor-pointer">
-                <span className="label-text mr-4">Tekst</span>
+                <span className="label-text mr-4">
+                  Geen antwoordmogelijkheid
+                </span>
                 <input
                   type="radio"
                   className="radio"
-                  value={SlideType.TEXT}
+                  value={SlideType.NO_ANSWER}
                   {...register("type")}
                 />
               </label>
@@ -362,50 +367,99 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
                   {...register("type")}
                 />
               </label>
-            </fieldset>
-          </article>
-          <article className="card flex-1 bg-base-100 shadow-xl">
-            <fieldset className="card-body">
-              <legend className="card-title float-left">Controle</legend>
               <label className="label cursor-pointer">
-                <span className="label-text mr-4">Direct</span>
+                <span className="label-text mr-4">Waar of niet waar</span>
                 <input
                   type="radio"
                   className="radio"
-                  value={CheckMethod.INSTANT}
-                  {...register("checkMethod")}
+                  value={SlideType.TRUE_FALSE}
+                  {...register("type")}
                 />
               </label>
               <label className="label cursor-pointer">
-                <span className="label-text mr-4">Handmatig</span>
+                <span className="label-text mr-4">Benadering</span>
                 <input
                   type="radio"
                   className="radio"
-                  value={CheckMethod.MANUAL}
-                  {...register("checkMethod")}
-                />
-              </label>
-              <label className="label cursor-pointer">
-                <span className="label-text mr-4">Stemmen</span>
-                <input
-                  type="radio"
-                  className="radio"
-                  value={CheckMethod.VOTE}
-                  {...register("checkMethod")}
-                />
-              </label>
-              <label className="label cursor-pointer">
-                <span className="label-text mr-4">Geen</span>
-                <input
-                  type="radio"
-                  className="radio"
-                  value={CheckMethod.NONE}
-                  {...register("checkMethod")}
+                  value={SlideType.CLOSEST_TO}
+                  {...register("type")}
                 />
               </label>
             </fieldset>
           </article>
+          {type !== SlideType.NO_ANSWER && (
+            <article className="card flex-1 bg-base-100 shadow-xl">
+              <fieldset className="card-body">
+                <legend className="card-title float-left">Controle</legend>
+                <label className="label cursor-pointer">
+                  <span className="label-text mr-4">Handmatig achteraf</span>
+                  <input
+                    type="radio"
+                    className="radio"
+                    value={CheckMethod.MANUAL}
+                    {...register("checkMethod")}
+                  />
+                </label>
+                <label className="label cursor-pointer">
+                  <span className="label-text mr-4">Antwoordsleutel</span>
+                  <input
+                    type="radio"
+                    className="radio"
+                    value={CheckMethod.INSTANT}
+                    {...register("checkMethod")}
+                  />
+                </label>
+                <label className="label cursor-pointer">
+                  <span className="label-text mr-4">Stemmen</span>
+                  <input
+                    type="radio"
+                    className="radio"
+                    value={CheckMethod.VOTE}
+                    {...register("checkMethod")}
+                  />
+                </label>
+                <label className="label cursor-pointer">
+                  <span className="label-text mr-4">Meest beantwoord</span>
+                  <input
+                    type="radio"
+                    className="radio"
+                    value={CheckMethod.MOST_ANSWERED}
+                    {...register("checkMethod")}
+                  />
+                </label>
+                <label className="label cursor-pointer">
+                  <span className="label-text mr-4">Geen</span>
+                  <input
+                    type="radio"
+                    className="radio"
+                    value={CheckMethod.NONE}
+                    {...register("checkMethod")}
+                  />
+                </label>
+              </fieldset>
+            </article>
+          )}
         </div>
+        {type === SlideType.TRUE_FALSE &&
+          checkMethod === CheckMethod.INSTANT && (
+            <article className="card flex-1 bg-base-100 shadow-xl">
+              <div className="card-body">
+                <label className="card-title" htmlFor="statementIsTrue">
+                  Juiste antwoord
+                </label>
+                <div className="flex gap-2">
+                  Niet waar
+                  <input
+                    id="statementIsTrue"
+                    type="checkbox"
+                    className="toggle"
+                    {...register("statementIsTrue")}
+                  />
+                  Waar
+                </div>
+              </div>
+            </article>
+          )}
         <div className="flex flex-wrap justify-between">
           <button
             type="button"
@@ -423,22 +477,22 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
           </button>
         </div>
       </form>
-      <hr />
-      {type !== SlideType.TEXT && type !== SlideType.OPEN && (
+      {(type === SlideType.MULTIPLE_CHOICE ||
+        type === SlideType.MULTIPLE_SELECT) && (
         <>
-          {slide?.answerOptions.map((answerOption) => (
-            <>
-              <EditAnswerOption
-                key={answerOption.id}
-                id={answerOption.id}
+          <hr />
+          {slide?.multipleChoiceOptions.map((multipleChoiceOption) => (
+            <Fragment key={multipleChoiceOption.id}>
+              <EditMultipleChoiceOption
+                id={multipleChoiceOption.id}
                 checkMethod={checkMethod}
               />
               <hr />
-            </>
+            </Fragment>
           ))}
           <button
             className="btn-primary btn"
-            onClick={() => createAnswerOption.mutate({ slideId: id })}
+            onClick={() => multipleChoiceOption.mutate({ slideId: id })}
           >
             Nieuw antwoord
           </button>

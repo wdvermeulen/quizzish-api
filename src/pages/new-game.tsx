@@ -41,7 +41,7 @@ const NewGame: NextPage = () => {
             <div className="card-body">
               <button
                 className="btn-primary btn"
-                onClick={() => createGame.mutate({})}
+                onClick={() => createGame.mutate()}
               >
                 Nieuw spel bouwen
               </button>
