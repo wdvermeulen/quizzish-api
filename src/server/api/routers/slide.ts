@@ -45,9 +45,9 @@ export const slideRouter = createTRPCRouter({
         },
         include: {
           multipleChoiceOptions: {
-            select: { id: true },
             orderBy: { index: "asc" },
           },
+          textAnswers: true,
           images: true,
         },
       })
@@ -68,53 +68,166 @@ export const slideRouter = createTRPCRouter({
         id: z.string().cuid(),
         index: z.number().min(1).optional(),
         type: z.nativeEnum(SlideType).optional(),
-        roundId: z.string().cuid().optional(),
-        description: z.string().min(1).max(512).optional(),
         name: z.string().min(1).max(128).nullish(),
+        roundId: z.string().cuid().optional(),
         timeLimitInSeconds: z.number().min(1).nullish(),
+        description: z.string().min(1).max(512).optional(),
+        multipleChoiceOptions: z
+          .array(
+            z.object({
+              id: z.string().cuid(),
+              nextSlideId: z.string().cuid().nullish(),
+              description: z.string().min(1).max(512).optional(),
+              isCorrect: z.boolean().optional(),
+              earlyPoints: z.number().min(-10).max(10).nullish(),
+              latePoints: z.number().min(-10).max(10).nullish(),
+            })
+          )
+          .optional(),
+        closestToValue: z.bigint().nullish(),
+        textAnswers: z
+          .array(
+            z.object({
+              id: z.string().cuid(),
+              answer: z.string().min(1).max(512).optional(),
+              isRegex: z.boolean().optional(),
+              nextSlideId: z.string().cuid().nullish(),
+              earlyPoints: z.number().min(-10).max(10).nullish(),
+              latePoints: z.number().min(-10).max(10).nullish(),
+            })
+          )
+          .optional(),
+        statementIsTrue: z.boolean().nullish(),
         checkMethod: z.nativeEnum(CheckMethod).optional(),
+        earlyCorrectPoints: z.number().min(-10).max(10).nullish(),
+        lateCorrectPoints: z.number().min(-10).max(10).nullish(),
+        earlyIncorrectPoints: z.number().min(-10).max(10).nullish(),
+        lateIncorrectPoints: z.number().min(-10).max(10).nullish(),
+        correctNextSlideId: z.string().cuid().nullish(),
+        incorrectNextSlideId: z.string().cuid().nullish(),
         explanation: z.string().min(1).max(512).nullish(),
         largeText: z.string().min(1).max(16777215).nullish(),
         media: z.string().min(1).max(128).nullish(),
       })
     )
-    .mutation(async ({ ctx, input: { id, ...data } }) => {
-      const index = data.index;
-      if (index) {
-        const slide = await ctx.prisma.slide.findUniqueOrThrow({
+    .mutation(
+      async ({
+        ctx,
+        input: { id, textAnswers, multipleChoiceOptions, ...slideData },
+      }) => {
+        const index = slideData.index;
+        if (index) {
+          const slide = await ctx.prisma.slide.findUniqueOrThrow({
+            where: {
+              userId_id: {
+                id,
+                userId: ctx.session.user.id,
+              },
+            },
+            include: {
+              multipleChoiceOptions: {
+                select: { id: true },
+                orderBy: { index: "asc" },
+              },
+              textAnswers: true,
+              images: true,
+            },
+          });
+          if (slide.index !== index) {
+            await ctx.prisma.slide.updateMany({
+              where: {
+                userId: ctx.session.user.id,
+                roundId: slide.roundId,
+                index: {
+                  gte: Math.min(slide.index, index),
+                  lte: Math.max(slide.index, index),
+                },
+              },
+              data: {
+                index:
+                  index > slide.index ? { decrement: 1 } : { increment: 1 },
+              },
+            });
+          }
+        }
+        if (slideData.type === SlideType.OPEN && textAnswers) {
+          for (const textAnswer of textAnswers) {
+            await ctx.prisma.textAnswer.upsert({
+              where: {
+                userId_id: { id: textAnswer.id, userId: ctx.session.user.id },
+              },
+              update: textAnswer,
+              create: {
+                ...textAnswer,
+                slideId: id,
+                userId: ctx.session.user.id,
+              },
+            });
+          }
+          await ctx.prisma.multipleChoiceOption.deleteMany({
+            where: {
+              slideId: id,
+              userId: ctx.session.user.id,
+            },
+          });
+        } else if (
+          (slideData.type === SlideType.MULTIPLE_CHOICE ||
+            slideData.type === SlideType.MULTIPLE_SELECT) &&
+          multipleChoiceOptions
+        ) {
+          for (const option of multipleChoiceOptions) {
+            if (option.id) {
+              await ctx.prisma.multipleChoiceOption.upsert({
+                where: {
+                  userId_id: { id: option.id, userId: ctx.session.user.id },
+                },
+                update: option,
+                create: {
+                  ...option,
+                  slideId: id,
+                  userId: ctx.session.user.id,
+                  index: await ctx.prisma.multipleChoiceOption.count({
+                    where: {
+                      slideId: id,
+                    },
+                  }),
+                },
+              });
+            }
+          }
+          await ctx.prisma.textAnswer.deleteMany({
+            where: {
+              slideId: id,
+              userId: ctx.session.user.id,
+            },
+          });
+        } else {
+          await Promise.all([
+            ctx.prisma.textAnswer.deleteMany({
+              where: {
+                slideId: id,
+                userId: ctx.session.user.id,
+              },
+            }),
+            ctx.prisma.multipleChoiceOption.deleteMany({
+              where: {
+                slideId: id,
+                userId: ctx.session.user.id,
+              },
+            }),
+          ]);
+        }
+        return ctx.prisma.slide.update({
           where: {
             userId_id: {
               id,
               userId: ctx.session.user.id,
             },
           },
+          data: slideData,
         });
-        if (slide.index !== index) {
-          await ctx.prisma.slide.updateMany({
-            where: {
-              userId: ctx.session.user.id,
-              roundId: slide.roundId,
-              index: {
-                gte: Math.min(slide.index, index),
-                lte: Math.max(slide.index, index),
-              },
-            },
-            data: {
-              index: index > slide.index ? { decrement: 1 } : { increment: 1 },
-            },
-          });
-        }
       }
-      return ctx.prisma.slide.update({
-        where: {
-          userId_id: {
-            id,
-            userId: ctx.session.user.id,
-          },
-        },
-        data,
-      });
-    }),
+    ),
   delete: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .mutation(async ({ ctx, input: { id } }) => {

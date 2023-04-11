@@ -132,8 +132,8 @@ model Slide {
   previousCorrectAnswer        Slide[]                @relation("NextCorrectSlide")
   previousIncorrectAnswer      Slide[]                @relation("NextIncorrectSlide")
   multipleChoiceOptions        MultipleChoiceOption[]
-  closestToValue               Float?
-  textAnswer                   TextAnswer[]
+  closestToValue               BigInt?
+  textAnswers                  TextAnswer[]
   statementIsTrue              Boolean?
   checkMethod                  CheckMethod            @default(INSTANT)
   earlyCorrectPoints           Int?                   @default(10)
@@ -165,7 +165,6 @@ model TextAnswer {
   nextSlide   Slide?   @relation("NextSlide", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   earlyPoints Int?     @default(10)
   latePoints  Int?     @default(0)
-  explanation String?  @db.VarChar(512)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -2,184 +2,16 @@ import EditLayout from "components/layout/edit-layout";
 import { Loader } from "components/loader";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
-import { Fragment, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { api, handleErrorClientSide } from "utils/api";
+import { useEffect } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { api, handleErrorClientSide, type RouterOutputs } from "utils/api";
 import { secondsToString } from "utils/time";
-import {
-  CheckMethod,
-  type MultipleChoiceOption,
-  type Slide,
-  SlideType,
-} from "@prisma/client";
+import { CheckMethod, SlideType } from "@prisma/client";
 import Textarea from "components/form/text-area";
-
-const EditMultipleChoiceOption = ({
-  id,
-  checkMethod,
-}: {
-  id: string;
-  checkMethod: CheckMethod;
-}) => {
-  const { data: multipleChoiceOption, isLoading } =
-    api.multipleChoiceOption.get.useQuery(
-      { id },
-      {
-        onSuccess: (data) => {
-          if (data) {
-            reset();
-          }
-        },
-      }
-    );
-
-  const multipleChoiceOptionToDefaultFormValues = (
-    multipleChoiceOption?: MultipleChoiceOption
-  ) => ({
-    isCorrect: multipleChoiceOption?.isCorrect || false,
-    description: multipleChoiceOption?.description || "",
-    earlyPoints: multipleChoiceOption?.earlyPoints || 0,
-    latePoints: multipleChoiceOption?.latePoints || 0,
-  });
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { isDirty, isValid },
-    reset,
-  } = useForm({
-    defaultValues:
-      multipleChoiceOptionToDefaultFormValues(multipleChoiceOption),
-  });
-
-  const updateAnswerOption = api.multipleChoiceOption.update.useMutation({
-    onError: handleErrorClientSide,
-  });
-
-  const deleteAnswerOption = api.multipleChoiceOption.delete.useMutation({
-    onError: handleErrorClientSide,
-  });
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (!multipleChoiceOption) {
-    return <div>Antwoord niet gevonden</div>;
-  }
-
-  return (
-    <div className="collapse">
-      <input type="checkbox" />
-      <div className="collapse-title text-xl font-medium">
-        Antwoord {multipleChoiceOption.index}
-      </div>
-      <div className="collapse-content">
-        <form
-          className="flex min-h-full flex-col justify-between gap-4 pb-4"
-          onSubmit={handleSubmit((data) =>
-            updateAnswerOption.mutate({
-              id,
-              ...data,
-            })
-          )}
-        >
-          <div className="flex flex-wrap gap-4">
-            <article className="card flex-1 bg-base-100 shadow-xl">
-              <div className="card-body">
-                <label className="card-title" htmlFor="description">
-                  Antwoord
-                </label>
-                <input
-                  id="description"
-                  type="text"
-                  className="input-bordered input"
-                  maxLength={512}
-                  {...register("description", {
-                    required: "Dit veld is verplicht",
-                    maxLength: {
-                      value: 512,
-                      message: "Mag niet langer zijn dan 512 karakters",
-                    },
-                  })}
-                />
-              </div>
-            </article>
-            {checkMethod === CheckMethod.INSTANT && (
-              <article className="card flex-1 bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <label className="card-title" htmlFor="isCorrect">
-                    Correct antwoord?
-                  </label>
-                  <div className="flex gap-2">
-                    Niet goed
-                    <input
-                      id="isCorrect"
-                      type="checkbox"
-                      className="toggle"
-                      {...register("isCorrect")}
-                    />
-                    Goed
-                  </div>
-                </div>
-              </article>
-            )}
-            <article className="card flex-1 bg-base-100 shadow-xl">
-              <fieldset className="card-body">
-                <legend className="card-title float-left">Waarde</legend>
-                <label>
-                  Maximaal
-                  <input
-                    id="early-points"
-                    type="range"
-                    min="-10"
-                    max="10"
-                    className="range mt-4"
-                    step="1"
-                    {...register("earlyPoints")}
-                  />
-                </label>
-                <p className="text-center">{watch("earlyPoints")} punten</p>
-                <label>
-                  Minimaal
-                  <input
-                    id="late-points"
-                    type="range"
-                    min="-10"
-                    max="10"
-                    className="range mt-4"
-                    step="1"
-                    {...register("latePoints")}
-                  />
-                </label>
-                <p className="text-center">{watch("latePoints")} punten</p>
-              </fieldset>
-            </article>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <button
-              type="button"
-              className="space-between btn-outline btn flex-1 sm:flex-none"
-              onClick={() => deleteAnswerOption.mutate({ id })}
-              disabled={deleteAnswerOption.isLoading}
-            >
-              Antwoord verwijderen
-            </button>
-            <button
-              className="btn-primary btn flex-1 sm:ml-auto sm:flex-none"
-              disabled={updateAnswerOption.isLoading || !isDirty || !isValid}
-            >
-              Antwoord bewerken
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
+import { createId } from "@paralleldrive/cuid2";
 
 const slideRangeToSeconds = [3, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300, null];
+type SlideWithOptions = RouterOutputs["slide"]["get"];
 
 const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
   const {
@@ -201,7 +33,7 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     void refetch();
   }, [id, refetch]);
 
-  const slideToFormDefaults = (slide?: Slide) => ({
+  const slideToFormDefaults = (slide?: SlideWithOptions) => ({
     name: slide?.name || "",
     description: slide?.description || "",
     rawTimeLimit: slide
@@ -210,10 +42,18 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
     type: slide?.type || SlideType.MULTIPLE_CHOICE,
     checkMethod: slide?.checkMethod || CheckMethod.INSTANT,
     statementIsTrue: slide?.statementIsTrue,
+    multipleChoiceOptions: slide?.multipleChoiceOptions.map((option) => ({
+      id: option.id,
+      description: option.description,
+      isCorrect: option.isCorrect,
+      earlyPoints: option.earlyPoints,
+      latePoints: option.latePoints,
+    })),
   });
 
   const {
     reset,
+    control,
     register,
     handleSubmit,
     watch,
@@ -221,6 +61,12 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
   } = useForm({
     defaultValues: slideToFormDefaults(slide),
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "multipleChoiceOptions",
+  });
+
   const ctx = api.useContext();
   const updateSlide = api.slide.update.useMutation({
     onSuccess: () => {
@@ -236,10 +82,6 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
       await ctx.slide.getForRound.invalidate();
       return router.push(`/edit/${gameId}/${data.roundId}`);
     },
-    onError: handleErrorClientSide,
-  });
-  const multipleChoiceOption = api.multipleChoiceOption.create.useMutation({
-    onSuccess: () => void refetch(),
     onError: handleErrorClientSide,
   });
 
@@ -266,6 +108,11 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
             ...data,
             name: data.name || "",
             timeLimitInSeconds: slideRangeToSeconds[data.rawTimeLimit],
+            multipleChoiceOptions: data.multipleChoiceOptions?.map(
+              (option) => ({
+                id: option.id || createId(),
+              })
+            ),
           });
         })}
       >
@@ -481,18 +328,123 @@ const EditSlide = ({ id, gameId }: { id: string; gameId: string }) => {
         type === SlideType.MULTIPLE_SELECT) && (
         <>
           <hr />
-          {slide?.multipleChoiceOptions.map((multipleChoiceOption) => (
-            <Fragment key={multipleChoiceOption.id}>
-              <EditMultipleChoiceOption
-                id={multipleChoiceOption.id}
-                checkMethod={checkMethod}
-              />
+          {fields.map((multipleChoiceOption, index) => (
+            <div className="collapse" key={multipleChoiceOption.id}>
+              <input type="checkbox" />
+              <div className="collapse-title text-xl font-medium">
+                Antwoord {index + 1}
+              </div>
+              <div className="collapse-content">
+                <div className="flex flex-wrap gap-4">
+                  <article className="card flex-1 bg-base-100 shadow-xl">
+                    <div className="card-body">
+                      <label className="card-title" htmlFor="description">
+                        Antwoord
+                      </label>
+                      <input
+                        id="description"
+                        type="text"
+                        className="input-bordered input"
+                        maxLength={512}
+                        {...register(
+                          `multipleChoiceOptions.${index}.description`,
+                          {
+                            required: "Dit veld is verplicht",
+                            maxLength: {
+                              value: 512,
+                              message: "Mag niet langer zijn dan 512 karakters",
+                            },
+                          }
+                        )}
+                      />
+                    </div>
+                  </article>
+                  {checkMethod === CheckMethod.INSTANT && (
+                    <article className="card flex-1 bg-base-100 shadow-xl">
+                      <div className="card-body">
+                        <label className="card-title" htmlFor="isCorrect">
+                          Correct antwoord?
+                        </label>
+                        <div className="flex gap-2">
+                          Niet goed
+                          <input
+                            id="isCorrect"
+                            type="checkbox"
+                            className="toggle"
+                            {...register(
+                              `multipleChoiceOptions.${index}.isCorrect`
+                            )}
+                          />
+                          Goed
+                        </div>
+                      </div>
+                    </article>
+                  )}
+                  <article className="card flex-1 bg-base-100 shadow-xl">
+                    <fieldset className="card-body">
+                      <legend className="card-title float-left">Waarde</legend>
+                      <label>
+                        Maximaal
+                        <input
+                          id="early-points"
+                          type="range"
+                          min="-10"
+                          max="10"
+                          className="range mt-4"
+                          step="1"
+                          {...register(
+                            `multipleChoiceOptions.${index}.earlyPoints`
+                          )}
+                        />
+                      </label>
+                      <p className="text-center">
+                        {watch(`multipleChoiceOptions.${index}.earlyPoints`)}{" "}
+                        punten
+                      </p>
+                      <label>
+                        Minimaal
+                        <input
+                          id="late-points"
+                          type="range"
+                          min="-10"
+                          max="10"
+                          className="range mt-4"
+                          step="1"
+                          {...register(
+                            `multipleChoiceOptions.${index}.latePoints`
+                          )}
+                        />
+                      </label>
+                      <p className="text-center">
+                        {watch(`multipleChoiceOptions.${index}.latePoints`)}{" "}
+                        punten
+                      </p>
+                    </fieldset>
+                  </article>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      remove(index);
+                    }}
+                  >
+                    Vraag verwijderen
+                  </button>
+                </div>
+              </div>
               <hr />
-            </Fragment>
+            </div>
           ))}
           <button
             className="btn-primary btn"
-            onClick={() => multipleChoiceOption.mutate({ slideId: id })}
+            onClick={() =>
+              append({
+                id: createId(),
+                description: "",
+                earlyPoints: 0,
+                latePoints: 0,
+                isCorrect: false,
+              })
+            }
           >
             Nieuw antwoord
           </button>
