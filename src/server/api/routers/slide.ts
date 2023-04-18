@@ -1,4 +1,4 @@
-import { CheckMethod, SlideType } from "@prisma/client";
+import { CheckMethod, PointMethod, SlideType, Voters } from "@prisma/client";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -47,7 +47,6 @@ export const slideRouter = createTRPCRouter({
           multipleChoiceOptions: {
             orderBy: { index: "asc" },
           },
-          textAnswers: true,
           images: true,
         },
       })
@@ -78,27 +77,17 @@ export const slideRouter = createTRPCRouter({
               id: z.string().cuid(),
               nextSlideId: z.string().cuid().nullish(),
               description: z.string().min(1).max(512).optional(),
-              isCorrect: z.boolean().optional(),
+              isRegex: z.boolean().optional(),
               earlyPoints: z.number().min(-10).max(10).nullish(),
               latePoints: z.number().min(-10).max(10).nullish(),
             })
           )
           .optional(),
         closestToValue: z.bigint().nullish(),
-        textAnswers: z
-          .array(
-            z.object({
-              id: z.string().cuid(),
-              answer: z.string().min(1).max(512).optional(),
-              isRegex: z.boolean().optional(),
-              nextSlideId: z.string().cuid().nullish(),
-              earlyPoints: z.number().min(-10).max(10).nullish(),
-              latePoints: z.number().min(-10).max(10).nullish(),
-            })
-          )
-          .optional(),
         statementIsTrue: z.boolean().nullish(),
         checkMethod: z.nativeEnum(CheckMethod).optional(),
+        pointMethod: z.nativeEnum(PointMethod).optional(),
+        voters: z.nativeEnum(Voters).optional(),
         earlyCorrectPoints: z.number().min(-10).max(10).nullish(),
         lateCorrectPoints: z.number().min(-10).max(10).nullish(),
         earlyIncorrectPoints: z.number().min(-10).max(10).nullish(),
@@ -111,10 +100,7 @@ export const slideRouter = createTRPCRouter({
       })
     )
     .mutation(
-      async ({
-        ctx,
-        input: { id, textAnswers, multipleChoiceOptions, ...slideData },
-      }) => {
+      async ({ ctx, input: { id, multipleChoiceOptions, ...slideData } }) => {
         const index = slideData.index;
         if (index) {
           const slide = await ctx.prisma.slide.findUniqueOrThrow({
@@ -129,7 +115,6 @@ export const slideRouter = createTRPCRouter({
                 select: { id: true },
                 orderBy: { index: "asc" },
               },
-              textAnswers: true,
               images: true,
             },
           });
@@ -150,31 +135,7 @@ export const slideRouter = createTRPCRouter({
             });
           }
         }
-        if (slideData.type === SlideType.OPEN && textAnswers) {
-          for (const textAnswer of textAnswers) {
-            await ctx.prisma.textAnswer.upsert({
-              where: {
-                userId_id: { id: textAnswer.id, userId: ctx.session.user.id },
-              },
-              update: textAnswer,
-              create: {
-                ...textAnswer,
-                slideId: id,
-                userId: ctx.session.user.id,
-              },
-            });
-          }
-          await ctx.prisma.multipleChoiceOption.deleteMany({
-            where: {
-              slideId: id,
-              userId: ctx.session.user.id,
-            },
-          });
-        } else if (
-          (slideData.type === SlideType.MULTIPLE_CHOICE ||
-            slideData.type === SlideType.MULTIPLE_SELECT) &&
-          multipleChoiceOptions
-        ) {
+        if (multipleChoiceOptions) {
           for (const option of multipleChoiceOptions) {
             if (option.id) {
               await ctx.prisma.multipleChoiceOption.upsert({
@@ -195,28 +156,18 @@ export const slideRouter = createTRPCRouter({
               });
             }
           }
-          await ctx.prisma.textAnswer.deleteMany({
-            where: {
-              slideId: id,
-              userId: ctx.session.user.id,
-            },
-          });
-        } else {
-          await Promise.all([
-            ctx.prisma.textAnswer.deleteMany({
-              where: {
-                slideId: id,
-                userId: ctx.session.user.id,
-              },
-            }),
-            ctx.prisma.multipleChoiceOption.deleteMany({
-              where: {
-                slideId: id,
-                userId: ctx.session.user.id,
-              },
-            }),
-          ]);
         }
+        await ctx.prisma.multipleChoiceOption.deleteMany({
+          where: {
+            slideId: id,
+            userId: ctx.session.user.id,
+            NOT: {
+              id: {
+                in: multipleChoiceOptions?.map((option) => option.id) ?? [],
+              },
+            },
+          },
+        });
         return ctx.prisma.slide.update({
           where: {
             userId_id: {

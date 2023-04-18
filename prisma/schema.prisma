@@ -128,18 +128,18 @@ model Slide {
   timeLimitInSeconds           Int?
   description                  String?                @db.VarChar(512)
   previousMultipleChoiceAnswer MultipleChoiceOption[] @relation("NextSlide")
-  previousTextAnswer           TextAnswer[]           @relation("NextSlide")
   previousCorrectAnswer        Slide[]                @relation("NextCorrectSlide")
   previousIncorrectAnswer      Slide[]                @relation("NextIncorrectSlide")
   multipleChoiceOptions        MultipleChoiceOption[]
   closestToValue               BigInt?
-  textAnswers                  TextAnswer[]
   statementIsTrue              Boolean?
   checkMethod                  CheckMethod            @default(INSTANT)
-  earlyCorrectPoints           Int?                   @default(10)
-  lateCorrectPoints            Int?                   @default(0)
-  earlyIncorrectPoints         Int?                   @default(-10)
-  lateIncorrectPoints          Int?                   @default(-10)
+  voters                       Voters                 @default(ALL_PARTICIPANTS)
+  earlyCorrectPoints           Int                    @default(10)
+  lateCorrectPoints            Int                    @default(0)
+  earlyIncorrectPoints         Int                    @default(0)
+  lateIncorrectPoints          Int                    @default(0)
+  pointMethod                  PointMethod            @default(NONE)
   correctNextSlideId           String?
   correctNextSlide             Slide?                 @relation("NextCorrectSlide", fields: [correctNextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   incorrectNextSlideId         String?
@@ -154,33 +154,16 @@ model Slide {
   @@unique([userId, id])
 }
 
-model TextAnswer {
-  id          String   @id @default(cuid())
-  userId      String
-  slideId     String
-  slide       Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  answer      String?  @db.VarChar(512)
-  isRegex     Boolean  @default(false)
-  nextSlideId String?
-  nextSlide   Slide?   @relation("NextSlide", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  earlyPoints Int?     @default(10)
-  latePoints  Int?     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([userId, id])
-}
-
 model MultipleChoiceOption {
   id          String  @id @default(cuid())
   index       Int     @unique
   userId      String
   slideId     String
   slide       Slide   @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  isRegex     Boolean @default(false)
   nextSlideId String?
   nextSlide   Slide?  @relation("NextSlide", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   description String? @db.VarChar(512)
-  isCorrect   Boolean @default(false)
   earlyPoints Int?    @default(10)
   latePoints  Int?    @default(0)
 
@@ -227,8 +210,15 @@ enum CheckMethod {
   NONE
 }
 
-enum Voter {
+enum PointMethod {
+  TIME
+  ORDER
+  NONE
+}
+
+enum Voters {
   HOSTS
+  SELECTED_PARTICIPANT
   RANDOM_PARTICIPANT
   ALL_PARTICIPANTS
   GUESTS
