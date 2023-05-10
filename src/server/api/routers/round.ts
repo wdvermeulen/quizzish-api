@@ -30,12 +30,11 @@ export const roundRouter = createTRPCRouter({
         },
       });
       if (lastRound) {
-        await ctx.prisma.round.update({
-          where: {
-            id: lastRound.id,
-          },
+        void ctx.prisma.nextRoundPossibility.create({
           data: {
+            roundId: lastRound.id,
             nextRoundId: newRound.id,
+            userId: ctx.session.user.id,
           },
         });
       }
@@ -91,6 +90,13 @@ export const roundRouter = createTRPCRouter({
     .query(({ ctx, input: { id } }) =>
       ctx.prisma.round.findUniqueOrThrow({
         where: { userId_id: { userId: ctx.session.user.id, id } },
+        include: {
+          nextRoundPossibilities: {
+            include: {
+              conditions: true,
+            },
+          },
+        },
       })
     ),
   getForGame: protectedProcedure
@@ -105,15 +111,6 @@ export const roundRouter = createTRPCRouter({
     .mutation(async ({ ctx, input: { id } }) => {
       const removedRound = await ctx.prisma.round.findUniqueOrThrow({
         where: { userId_id: { userId: ctx.session.user.id, id } },
-      });
-      await ctx.prisma.round.updateMany({
-        where: {
-          userId: ctx.session.user.id,
-          nextRoundId: id,
-        },
-        data: {
-          nextRoundId: removedRound.nextRoundId,
-        },
       });
       await ctx.prisma.round.delete({
         where: {

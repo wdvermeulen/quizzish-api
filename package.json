@@ -10,6 +10,7 @@
     "start": "next start",
     "db-push": "prisma db push",
     "prisma-studio": "npx prisma studio",
+    "prisma-format": "npx prisma format",
     "prettier": "prettier --write .",
     "prepare": "husky install"
   },

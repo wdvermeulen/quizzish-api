@@ -1,4 +1,10 @@
-import { CheckMethod, PointMethod, SlideType, Voters } from "@prisma/client";
+import {
+  CheckMethod,
+  GameType,
+  PointMethod,
+  SlideType,
+  Voters,
+} from "@prisma/client";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -21,6 +27,15 @@ export const slideRouter = createTRPCRouter({
           },
           select: {
             index: true,
+            round: {
+              select: {
+                game: {
+                  select: {
+                    type: true,
+                  },
+                },
+              },
+            },
           },
         })
         .then((data) =>
@@ -29,6 +44,22 @@ export const slideRouter = createTRPCRouter({
               roundId: input.roundId,
               index: (data?.index ?? 0) + 1,
               userId: ctx.session.user.id,
+              ...(data?.round.game.type === GameType.REGULAR_QUIZ && {
+                type: SlideType.MULTIPLE_CHOICE,
+                timeLimitInSeconds: 30,
+                checkMethod: CheckMethod.AUTOMATIC,
+                pointMethod: PointMethod.TIME,
+              }),
+              ...(data?.round.game.type === GameType.PUBQUIZ && {
+                type: SlideType.OPEN,
+                checkMethod: CheckMethod.MANUAL,
+                pointMethod: PointMethod.NONE,
+              }),
+              ...(data?.round.game.type === GameType.ESCAPE_ROOM && {
+                type: SlideType.OPEN,
+                checkMethod: CheckMethod.AUTOMATIC,
+                pointMethod: PointMethod.NONE,
+              }),
             },
           })
         )
@@ -48,6 +79,7 @@ export const slideRouter = createTRPCRouter({
             orderBy: { index: "asc" },
           },
           images: true,
+          nextSlidePossibilities: true,
         },
       })
     ),
@@ -88,10 +120,10 @@ export const slideRouter = createTRPCRouter({
         checkMethod: z.nativeEnum(CheckMethod).optional(),
         pointMethod: z.nativeEnum(PointMethod).optional(),
         voters: z.nativeEnum(Voters).optional(),
-        earlyCorrectPoints: z.number().min(-10).max(10).nullish(),
-        lateCorrectPoints: z.number().min(-10).max(10).nullish(),
-        earlyIncorrectPoints: z.number().min(-10).max(10).nullish(),
-        lateIncorrectPoints: z.number().min(-10).max(10).nullish(),
+        earlyCorrectPoints: z.number().min(-10).max(10).optional(),
+        lateCorrectPoints: z.number().min(-10).max(10).optional(),
+        earlyIncorrectPoints: z.number().min(-10).max(10).optional(),
+        lateIncorrectPoints: z.number().min(-10).max(10).optional(),
         correctNextSlideId: z.string().cuid().nullish(),
         incorrectNextSlideId: z.string().cuid().nullish(),
         explanation: z.string().min(1).max(512).nullish(),

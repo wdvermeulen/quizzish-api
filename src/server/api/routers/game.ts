@@ -43,6 +43,40 @@ export const gameRouter = createTRPCRouter({
         },
       })
     ),
+  getFull: protectedProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .query(({ ctx, input: { id } }) =>
+      ctx.prisma.game.findUnique({
+        where: {
+          userId_id: {
+            id,
+            userId: ctx.session.user.id,
+          },
+        },
+        include: {
+          rounds: {
+            include: {
+              nextRoundPossibilities: {
+                include: {
+                  conditions: true,
+                },
+              },
+              slides: {
+                include: {
+                  images: true,
+                  multipleChoiceOptions: true,
+                  nextSlidePossibilities: {
+                    include: {
+                      conditions: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+    ),
   getAll: protectedProcedure.query(({ ctx }) =>
     ctx.prisma.game.findMany({ where: { userId: ctx.session.user.id } })
   ),

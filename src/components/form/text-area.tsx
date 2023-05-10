@@ -21,10 +21,14 @@ const Textarea = ({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    handleInput();
+    resize();
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
-  const handleInput = () => {
+  const resize = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
@@ -34,8 +38,8 @@ const Textarea = ({
   return (
     <textarea
       rows={1}
-      onInput={handleInput}
-      className="textarea-bordered textarea resize-none overflow-hidden"
+      onInput={resize}
+      className="textarea-bordered textarea w-full resize-none overflow-hidden"
       {...registeredField}
       ref={(e) => {
         ref(e);

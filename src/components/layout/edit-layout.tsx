@@ -64,7 +64,7 @@ function SidebarRound({
 
   useEffect(() => {
     setIsExpanded(router.asPath.startsWith(`/edit/${gameId}/${round.id}`));
-  }, [router.asPath]);
+  }, [router.asPath, gameId, round.id]);
 
   if (isLoading) {
     return <Loader />;
@@ -213,7 +213,7 @@ const EditLayout = ({ children }: PropsWithChildren) => {
     if (status === "unauthenticated") {
       void router.push("../");
     }
-  }, [status]);
+  });
 
   if (status === "loading") return <LoadingPage />;
 

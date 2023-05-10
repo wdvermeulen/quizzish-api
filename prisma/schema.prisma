@@ -27,6 +27,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -35,6 +36,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
@@ -83,15 +86,15 @@ model Host {
 }
 
 model Game {
-  id                 String   @id @default(cuid())
-  userId             String
-  room               Room?
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type               GameType @default(CUSTOM)
   name               String?  @db.VarChar(64)
   description        String?  @db.VarChar(1024)
-  rounds             Round[]
+  type               GameType @default(CUSTOM)
   timeLimitInMinutes Int      @default(1440)
+  rounds             Round[]
+  room               Room?
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -99,86 +102,143 @@ model Game {
 }
 
 model Round {
-  id                 String   @id @default(cuid())
-  name               String?  @db.VarChar(128)
-  userId             String
-  gameId             String
-  game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  index              Int
-  nextRoundId        String?
-  nextRound          Round?   @relation("NextRound", fields: [nextRoundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  previousRound      Round[]  @relation("NextRound")
-  slides             Slide[]
-  timeLimitInMinutes Int?
-  description        String?  @db.VarChar(1024)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  name                   String?                @db.VarChar(128)
+  description            String?                @db.VarChar(1024)
+  index                  Int
+  slides                 Slide[]
+  timeLimitInMinutes     Int?
+  navigationMode         NavigationMode         @default(TOGETHER)
+  checkAfter             Boolean                @default(false)
+  nextRoundPossibilities NextRoundPossibility[]
+  gameId                 String
+  game                   Game                   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  previousRound          NextRoundPossibility[] @relation("NextRound")
+  userId                 String
+  id                     String                 @id @default(cuid())
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   @@unique([userId, id])
+  @@index([gameId])
+}
+
+model NextRoundPossibility {
+  conditions  Condition[]
+  nextRoundId String
+  nextRound   Round       @relation("NextRound", fields: [nextRoundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  roundId     String
+  round       Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId      String
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([roundId])
+  @@index([nextRoundId])
+}
+
+model Condition {
+  conditionType          ConditionType
+  comparisonType1        ComparisonType
+  comparisonType2        ComparisonType?
+  logicOperator          LogicOperator?
+  comparisonValue1       Int
+  comparisonValue2       Int?
+  nextRoundPossibilityId String?
+  nextRoundPossibility   NextRoundPossibility? @relation(fields: [nextRoundPossibilityId], references: [id], onDelete: Cascade)
+  nextSlidePossibilityId String?
+  nextSlidePossibility   NextSlidePossibility? @relation(fields: [nextSlidePossibilityId], references: [id], onDelete: Cascade)
+  userId                 String
+  id                     String                @id @default(cuid())
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@index([nextRoundPossibilityId])
+  @@index([nextSlidePossibilityId])
 }
 
 model Slide {
-  id                           String                 @id @default(cuid())
-  userId                       String
-  index                        Int
-  type                         SlideType              @default(NO_ANSWER)
   name                         String?                @db.VarChar(128)
-  roundId                      String
-  round                        Round                  @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  timeLimitInSeconds           Int?
   description                  String?                @db.VarChar(512)
-  previousMultipleChoiceAnswer MultipleChoiceOption[] @relation("NextSlide")
-  previousCorrectAnswer        Slide[]                @relation("NextCorrectSlide")
-  previousIncorrectAnswer      Slide[]                @relation("NextIncorrectSlide")
+  type                         SlideType              @default(NO_ANSWER)
+  timeLimitInSeconds           Int?
   multipleChoiceOptions        MultipleChoiceOption[]
   closestToValue               BigInt?
-  statementIsTrue              Boolean?
-  checkMethod                  CheckMethod            @default(INSTANT)
+  checkMethod                  CheckMethod            @default(AUTOMATIC)
+  pointMethod                  PointMethod            @default(NONE)
+  explanation                  String?                @db.VarChar(512)
+  largeText                    String?                @db.Text
+  media                        String?                @db.VarChar(128)
+  images                       Image[]
+  index                        Int
+  checkAfter                   Boolean                @default(true)
   voters                       Voters                 @default(ALL_PARTICIPANTS)
   earlyCorrectPoints           Int                    @default(10)
   lateCorrectPoints            Int                    @default(0)
   earlyIncorrectPoints         Int                    @default(0)
   lateIncorrectPoints          Int                    @default(0)
-  pointMethod                  PointMethod            @default(NONE)
-  correctNextSlideId           String?
-  correctNextSlide             Slide?                 @relation("NextCorrectSlide", fields: [correctNextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  incorrectNextSlideId         String?
-  incorrectNextSlide           Slide?                 @relation("NextIncorrectSlide", fields: [incorrectNextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  explanation                  String?                @db.VarChar(512)
-  largeText                    String?                @db.Text
-  media                        String?                @db.VarChar(128)
-  images                       Image[]
+  nextSlidePossibilities       NextSlidePossibility[]
+  roundId                      String
+  round                        Round                  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId                       String
+  id                           String                 @id @default(cuid())
   createdAt                    DateTime               @default(now())
   updatedAt                    DateTime               @updatedAt
+  PreviousSlidePossibility     NextSlidePossibility[] @relation("NextSlidePossibility")
+  PreviousMultipleChoiceOption MultipleChoiceOption[] @relation("NextSlideMultipleChoice")
 
   @@unique([userId, id])
+  @@index([roundId])
+}
+
+model NextSlidePossibility {
+  conditions  Condition[]
+  nextSlideId String
+  nextSlide   Slide       @relation("NextSlidePossibility", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  slideId     String
+  slide       Slide       @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  userId      String
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([userId, id])
+  @@index([slideId])
+  @@index([nextSlideId])
 }
 
 model MultipleChoiceOption {
-  id          String  @id @default(cuid())
-  index       Int     @unique
-  userId      String
-  slideId     String
-  slide       Slide   @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  isRegex     Boolean @default(false)
+  description String?  @db.VarChar(512)
+  earlyPoints Int?     @default(10)
+  latePoints  Int?     @default(0)
+  isRegex     Boolean  @default(false)
+  index       Int      @unique
   nextSlideId String?
-  nextSlide   Slide?  @relation("NextSlide", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  description String? @db.VarChar(512)
-  earlyPoints Int?    @default(10)
-  latePoints  Int?    @default(0)
+  nextSlide   Slide?   @relation("NextSlideMultipleChoice", fields: [nextSlideId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  slideId     String
+  slide       Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  userId      String
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([userId, id])
+  @@index([slideId])
+  @@index([nextSlideId])
 }
 
 model Image {
-  id      String @id @default(cuid())
-  index   Int
-  userId  String
-  slideId String
-  slide   Slide  @relation(fields: [slideId], references: [id], onDelete: Cascade)
-  image   String @db.VarChar(128)
+  image     String   @db.VarChar(128)
+  slide     Slide    @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  index     Int
+  slideId   String
+  userId    String
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, id])
+  @@index([slideId])
 }
 
 enum GameType {
@@ -186,6 +246,12 @@ enum GameType {
   PUBQUIZ
   ESCAPE_ROOM
   CUSTOM
+}
+
+enum NavigationMode {
+  TOGETHER
+  INDIVIDUAL
+  INDIVIDUAL_ROUTES
 }
 
 enum SlideType {
@@ -201,18 +267,47 @@ enum SlideType {
   POLL
 }
 
-enum CheckMethod {
-  MANUAL
-  INSTANT
-  VOTE
-  POLL
-  MOST_ANSWERED
-  NONE
+enum ConditionType {
+  GAME_TIME
+  ROUND_TIME
+  SLIDE_TIME
+  ORDER
+  POINTS
+  RANKINGS
+  IS_CORRECT
+  IS_INCORRECT
+  PARTICIPANTS
+  PARTICIPANTS_WITH_POINTS
+  REPEATS
+}
+
+enum LogicOperator {
+  AND
+  OR
+}
+
+enum ComparisonType {
+  SMALLEST
+  SMALLER
+  SMALLER_EQUALS
+  EQUALS
+  GREATER_EQUALS
+  GREATER
+  GREATEST
 }
 
 enum PointMethod {
   TIME
   ORDER
+  NONE
+}
+
+enum CheckMethod {
+  MANUAL
+  AUTOMATIC
+  VOTE
+  POLL
+  MOST_ANSWERED
   NONE
 }
 
