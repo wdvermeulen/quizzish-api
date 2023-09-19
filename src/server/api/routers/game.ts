@@ -1,7 +1,7 @@
-import { GameType } from "@prisma/client";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { gameSchema } from "utils/schema";
 
 export const gameRouter = createTRPCRouter({
   create: protectedProcedure.mutation(({ ctx }) =>
@@ -12,15 +12,8 @@ export const gameRouter = createTRPCRouter({
     })
   ),
   update: protectedProcedure
-    .input(
-      z.object({
-        id: z.string().cuid(),
-        name: z.string().min(1).max(64).optional(),
-        type: z.nativeEnum(GameType).optional(),
-        timeLimitInMinutes: z.number().min(1).optional(),
-      })
-    )
-    .mutation(({ ctx, input: { id, ...data } }) =>
+    .input(gameSchema)
+    .mutation(({ ctx, input: { id, rounds, ...data } }) =>
       ctx.prisma.game.update({
         where: {
           userId_id: {

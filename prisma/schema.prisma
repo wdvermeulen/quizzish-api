@@ -165,7 +165,8 @@ model Slide {
   multipleChoiceOptions        MultipleChoiceOption[]
   closestToValue               BigInt?
   checkMethod                  CheckMethod            @default(AUTOMATIC)
-  pointMethod                  PointMethod            @default(NONE)
+  pointsForTime                Boolean                @default(false)
+  pointsForOrder               Boolean                @default(false)
   explanation                  String?                @db.VarChar(512)
   largeText                    String?                @db.Text
   media                        String?                @db.VarChar(128)
@@ -294,12 +295,6 @@ enum ComparisonType {
   GREATER_EQUALS
   GREATER
   GREATEST
-}
-
-enum PointMethod {
-  TIME
-  ORDER
-  NONE
 }
 
 enum CheckMethod {

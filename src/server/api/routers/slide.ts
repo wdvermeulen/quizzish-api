@@ -1,10 +1,4 @@
-import {
-  CheckMethod,
-  GameType,
-  PointMethod,
-  SlideType,
-  Voters,
-} from "@prisma/client";
+import { CheckMethod, GameType, SlideType, Voters } from "@prisma/client";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
@@ -48,17 +42,20 @@ export const slideRouter = createTRPCRouter({
                 type: SlideType.MULTIPLE_CHOICE,
                 timeLimitInSeconds: 30,
                 checkMethod: CheckMethod.AUTOMATIC,
-                pointMethod: PointMethod.TIME,
+                pointsForTime: true,
+                pointsForOrder: false,
               }),
               ...(data?.round.game.type === GameType.PUBQUIZ && {
                 type: SlideType.OPEN,
                 checkMethod: CheckMethod.MANUAL,
-                pointMethod: PointMethod.NONE,
+                pointsForTime: false,
+                pointsForOrder: false,
               }),
               ...(data?.round.game.type === GameType.ESCAPE_ROOM && {
                 type: SlideType.OPEN,
                 checkMethod: CheckMethod.AUTOMATIC,
-                pointMethod: PointMethod.NONE,
+                pointsForTime: false,
+                pointsForOrder: true,
               }),
             },
           })
@@ -118,7 +115,8 @@ export const slideRouter = createTRPCRouter({
         closestToValue: z.bigint().nullish(),
         statementIsTrue: z.boolean().nullish(),
         checkMethod: z.nativeEnum(CheckMethod).optional(),
-        pointMethod: z.nativeEnum(PointMethod).optional(),
+        pointsForTime: z.boolean().optional(),
+        pointsForOrder: z.boolean().optional(),
         voters: z.nativeEnum(Voters).optional(),
         earlyCorrectPoints: z.number().min(-10).max(10).optional(),
         lateCorrectPoints: z.number().min(-10).max(10).optional(),
