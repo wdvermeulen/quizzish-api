@@ -413,7 +413,7 @@ const EditComponent = ({
   return (
     <form
       onSubmit={handleSubmit((data, event) => {
-        saveGame.mutateAsync(data).then(() => {
+        void saveGame.mutateAsync(data).then(() => {
           if (
             event &&
             "submitter" in event.nativeEvent &&

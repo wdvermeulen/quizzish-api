@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const gameSchema = z.object({
   id: z.string().cuid(),
-  name: z.string().min(1).max(64).optional(),
+  name: z.string().min(1).max(64).nullish(),
   type: z.nativeEnum(GameType).optional(),
   timeLimitInMinutes: z.number().min(1).optional(),
   rounds: z
@@ -23,19 +23,19 @@ export const gameSchema = z.object({
               name: z.string().min(1).max(128).nullish(),
               roundId: z.string().cuid().optional(),
               timeLimitInSeconds: z.number().min(1).nullish(),
-              description: z.string().min(1).max(512).optional(),
+              description: z.string().min(1).max(512).nullish(),
               multipleChoiceOptions: z
                 .array(
                   z.object({
                     id: z.string().cuid(),
                     nextSlideId: z.string().cuid().nullish(),
-                    description: z.string().min(1).max(512).optional(),
+                    description: z.string().min(1).max(512).nullish(),
                     isRegex: z.boolean().optional(),
                     earlyPoints: z.number().min(-10).max(10).nullish(),
                     latePoints: z.number().min(-10).max(10).nullish(),
                   })
                 )
-                .optional(),
+                .nullish(),
               closestToValue: z.bigint().nullish(),
               statementIsTrue: z.boolean().nullish(),
               checkMethod: z.nativeEnum(CheckMethod).optional(),
