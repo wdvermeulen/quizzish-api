@@ -17,7 +17,6 @@ import {
   ComparisonType,
   type Condition,
   ConditionType,
-  GameType,
   LogicOperator,
   NavigationMode,
   SlideType,
@@ -33,9 +32,39 @@ import { MinusCircleIcon, PlusCircleIcon } from "@heroicons/react/24/solid";
 import { gameSchema } from "utils/schema";
 
 type FullGame = NonNullable<RouterOutputs["game"]["getFull"]>;
-const gameRangeToMinutes = [15, 30, 45, 60, 90, 120, 180, 360, 480, 960, 1440];
-const roundRangeToMinutes = [1, 3, 5, 10, 15, 30, 45, 60, 90, 120, 180, null];
-const slideRangeToSeconds = [3, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300, null];
+const gameRangeToMinutes = [
+  15, 30, 45, 60, 90, 120, 180, 360, 480, 960, 1440,
+] as const;
+const roundRangeToMinutes = [
+  1,
+  3,
+  5,
+  10,
+  15,
+  30,
+  45,
+  60,
+  90,
+  120,
+  180,
+  null,
+] as const;
+const slideRangeToSeconds = [
+  3,
+  5,
+  10,
+  15,
+  30,
+  45,
+  60,
+  90,
+  120,
+  180,
+  300,
+  null,
+] as const;
+
+const SubmitOptions = { addRound: "addRound", save: "save" } as const;
 
 interface ConditionForm {
   id: string;
@@ -113,7 +142,6 @@ interface GameForm {
   id: string;
   name: string | null;
   description: string | null;
-  type: GameType;
   timeLimitIndex: number;
   rounds: RoundForm[];
 }
@@ -242,7 +270,7 @@ const roundToForm = (round?: FullGame["rounds"][number]): RoundForm =>
         timeLimitIndex: roundRangeToMinutes.length,
         navigationMode: NavigationMode.TOGETHER,
         checkAfter: true,
-        slides: [slideToForm()],
+        slides: [],
         nextRoundPossibilities: [],
       };
 
@@ -318,12 +346,16 @@ const EditComponent = ({
   firstParam: string | undefined;
   selectedSlideIndex: number | undefined;
 }) => {
-  const { control, handleSubmit, register } = useForm<GameForm>({
+  const {
+    control,
+    handleSubmit,
+    register,
+    formState: { errors },
+  } = useForm<GameForm>({
     values: {
       id: game.id,
       name: game.name,
       description: game.description,
-      type: game.type,
       timeLimitIndex: gameRangeToMinutes.findIndex(
         (m) => m === game.timeLimitInMinutes
       ),
@@ -334,6 +366,19 @@ const EditComponent = ({
     },
     resolver: zodResolver(gameSchema),
   });
+
+  const { append } = useFieldArray({
+    control,
+    name: "rounds",
+  });
+
+  const router = useRouter();
+
+  if (Object.keys(errors).length !== 0) {
+    console.error(errors);
+  }
+
+  const saveGame = api.game.update.useMutation();
 
   const renderSlide = () => {
     if (firstParam === undefined) {
@@ -346,6 +391,7 @@ const EditComponent = ({
           index={selectedSlideIndex}
           roundIndex={Number(firstParam)}
           control={control}
+          gameId={game.id}
         />
       );
     } else if (firstParam === "participants") {
@@ -365,7 +411,21 @@ const EditComponent = ({
   };
 
   return (
-    <form onSubmit={handleSubmit((data) => console.log(data))}>
+    <form
+      onSubmit={handleSubmit((data, event) => {
+        saveGame.mutateAsync(data).then(() => {
+          if (
+            event &&
+            "submitter" in event.nativeEvent &&
+            (event.nativeEvent.submitter as HTMLButtonElement).name ===
+              SubmitOptions.addRound
+          ) {
+            append(roundToForm());
+            void router.push(`/edit/${game.id}/0`);
+          }
+        });
+      })}
+    >
       <div className="grid grid-rows-[auto_1fr] overflow-auto lg:grid-rows-1">
         <div className="navbar lg:hidden">
           <div className="navbar-start">
@@ -580,6 +640,10 @@ const EditGame = ({
     control,
     name: `timeLimitIndex`,
   });
+  const rounds = useWatch({
+    control,
+    name: `rounds`,
+  });
 
   const deleteGame = api.game.delete.useMutation({
     onSuccess: () => {
@@ -595,47 +659,6 @@ const EditGame = ({
           registerName={register("name")}
           registerDescription={register("description")}
         />
-        <Card>
-          <fieldset className="flex flex-col">
-            <legend className="card-title float-left">Speltype</legend>
-            <label className="label cursor-pointer">
-              <span className="label-text mr-4">Quiz</span>
-              <input
-                type="radio"
-                className="radio"
-                value={GameType.REGULAR_QUIZ}
-                {...register("type")}
-              />
-            </label>
-            <label className="label cursor-pointer">
-              <span className="label-text mr-4">Pubquiz</span>
-              <input
-                type="radio"
-                className="radio"
-                value={GameType.PUBQUIZ}
-                {...register("type")}
-              />
-            </label>
-            <label className="label cursor-pointer">
-              <span className="label-text mr-4">Escape Room</span>
-              <input
-                type="radio"
-                className="radio"
-                value={GameType.ESCAPE_ROOM}
-                {...register("type")}
-              />
-            </label>
-            <label className="label cursor-pointer">
-              <span className="label-text mr-4">Custom</span>
-              <input
-                type="radio"
-                className="radio"
-                value={GameType.CUSTOM}
-                {...register("type")}
-              />
-            </label>
-          </fieldset>
-        </Card>
         <Card>
           <fieldset className="flex flex-col">
             <div className="form-control">
@@ -675,9 +698,15 @@ const EditGame = ({
         >
           Spel verwijderen
         </button>
-        <button className="btn-primary btn flex-1 sm:ml-auto sm:flex-none">
-          Eerste ronde toevoegen
-        </button>
+        {rounds.length < 1 && (
+          <button
+            type="submit"
+            className="btn-primary btn flex-1 sm:ml-auto sm:flex-none"
+            name={SubmitOptions.addRound}
+          >
+            Eerste ronde toevoegen
+          </button>
+        )}
       </ButtonContainer>
     </EditLayout>
   );
@@ -764,7 +793,7 @@ const EditRound = ({
               Slides op eigen tempo af laten gaan
             </option>
             <option value={NavigationMode.INDIVIDUAL_ROUTES}>
-              Volgorde op basis van antwoorden
+              Slides op eigen volgorde af laten gaan
             </option>
           </select>
         </Card>
@@ -978,13 +1007,17 @@ const EditSlide = ({
   index,
   register,
   roundIndex,
+  gameId,
   control,
 }: {
   index: number;
   register: UseFormRegister<GameForm>;
   roundIndex: number;
+  gameId: string;
   control: Control<GameForm>;
 }) => {
+  const router = useRouter();
+
   const { remove } = useFieldArray({
     control,
     name: `rounds.${roundIndex}.slides`,
@@ -994,7 +1027,6 @@ const EditSlide = ({
     name: `rounds.${roundIndex}.slides.${index}.multipleChoiceOptions`,
   });
 
-  const gameType = useWatch({ control, name: "type" });
   const type = useWatch({
     control,
     name: `rounds.${roundIndex}.slides.${index}.type`,
@@ -1061,97 +1093,81 @@ const EditSlide = ({
             type === SlideType.NO_ANSWER ? "Omschrijving" : "Vraag"
           }
         />
-        {!(
-          gameType === GameType.REGULAR_QUIZ &&
-          type === SlideType.MULTIPLE_CHOICE
-        ) && (
-          <Card>
-            <fieldset className="flex flex-col">
-              <label className="card-title" htmlFor="slide-type">
-                Soort vraag
-              </label>
-              <select
-                id="slide-type"
-                className="select-bordered select"
-                {...register(`rounds.${roundIndex}.slides.${index}.type`)}
-              >
-                <option value={SlideType.NO_ANSWER}>
-                  Geen antwoordmogelijkheid
-                </option>
-                <option value={SlideType.OPEN}>Open</option>
-                <option value={SlideType.MULTIPLE_CHOICE}>
-                  Multiple choice
-                </option>
-                <option value={SlideType.MULTIPLE_SELECT}>
-                  Multiple select
-                </option>
-                <option value={SlideType.TRUE_FALSE}>Waar of niet waar</option>
-                <option value={SlideType.CLOSEST_TO}>Benadering</option>
-                <option value={SlideType.CATEGORIZE}>Categorisatie</option>
-                <option value={SlideType.SORT}>Sorteren</option>
-                <option value={SlideType.PAIR}>Matchen</option>
-                <option value={SlideType.POLL}>Peiling</option>
-              </select>
-              {!(
-                gameType === GameType.REGULAR_QUIZ &&
-                checkMethod === CheckMethod.AUTOMATIC
-              ) &&
-                type !== SlideType.NO_ANSWER &&
-                type !== SlideType.POLL && (
+        <Card>
+          <fieldset className="flex flex-col">
+            <label className="card-title" htmlFor="slide-type">
+              Soort vraag
+            </label>
+            <select
+              id="slide-type"
+              className="select-bordered select"
+              {...register(`rounds.${roundIndex}.slides.${index}.type`)}
+            >
+              <option value={SlideType.NO_ANSWER}>
+                Geen antwoordmogelijkheid
+              </option>
+              <option value={SlideType.OPEN}>Open</option>
+              <option value={SlideType.MULTIPLE_CHOICE}>Multiple choice</option>
+              <option value={SlideType.MULTIPLE_SELECT}>Multiple select</option>
+              <option value={SlideType.TRUE_FALSE}>Waar of niet waar</option>
+              <option value={SlideType.CLOSEST_TO}>Benadering</option>
+              <option value={SlideType.CATEGORIZE}>Categorisatie</option>
+              <option value={SlideType.SORT}>Sorteren</option>
+              <option value={SlideType.PAIR}>Matchen</option>
+              <option value={SlideType.POLL}>Peiling</option>
+            </select>
+            {type !== SlideType.NO_ANSWER && type !== SlideType.POLL && (
+              <>
+                <label className="label-text" htmlFor="check-method">
+                  Controle
+                </label>
+                <select
+                  id="check-method"
+                  className="select-bordered select"
+                  {...register(
+                    `rounds.${roundIndex}.slides.${index}.checkMethod`
+                  )}
+                >
+                  <option value={CheckMethod.MANUAL}>Handmatig achteraf</option>
+                  <option value={CheckMethod.AUTOMATIC}>
+                    Vooraf gedefinieerd
+                  </option>
+                  <option value={CheckMethod.VOTE}>Stemmen</option>
+                  <option value={CheckMethod.MOST_ANSWERED}>
+                    Meest beantwoord
+                  </option>
+                  <option value={CheckMethod.NONE}>Geen</option>
+                </select>
+                {checkMethod === CheckMethod.VOTE && (
                   <>
-                    <label className="label-text" htmlFor="check-method">
-                      Controle
+                    <label className="label-text" htmlFor="voters">
+                      Stemmers
                     </label>
                     <select
-                      id="check-method"
+                      id="voters"
                       className="select-bordered select"
                       {...register(
-                        `rounds.${roundIndex}.slides.${index}.checkMethod`
+                        `rounds.${roundIndex}.slides.${index}.voters`
                       )}
                     >
-                      <option value={CheckMethod.MANUAL}>
-                        Handmatig achteraf
+                      <option value={Voters.ALL_PARTICIPANTS}>
+                        Alle deelnemers
                       </option>
-                      <option value={CheckMethod.AUTOMATIC}>
-                        Vooraf gedefinieerd
+                      <option value={Voters.SELECTED_PARTICIPANT}>
+                        Geselecteerde deelnemer(s)
                       </option>
-                      <option value={CheckMethod.VOTE}>Stemmen</option>
-                      <option value={CheckMethod.MOST_ANSWERED}>
-                        Meest beantwoord
+                      <option value={Voters.RANDOM_PARTICIPANT}>
+                        Willekeurige deelnemer
                       </option>
-                      <option value={CheckMethod.NONE}>Geen</option>
+                      <option value={Voters.HOSTS}>Spelleiders</option>
+                      <option value={Voters.GUESTS}>Gasten</option>
                     </select>
-                    {checkMethod === CheckMethod.VOTE && (
-                      <>
-                        <label className="label-text" htmlFor="voters">
-                          Stemmers
-                        </label>
-                        <select
-                          id="voters"
-                          className="select-bordered select"
-                          {...register(
-                            `rounds.${roundIndex}.slides.${index}.voters`
-                          )}
-                        >
-                          <option value={Voters.ALL_PARTICIPANTS}>
-                            Alle deelnemers
-                          </option>
-                          <option value={Voters.SELECTED_PARTICIPANT}>
-                            Geselecteerde deelnemer(s)
-                          </option>
-                          <option value={Voters.RANDOM_PARTICIPANT}>
-                            Willekeurige deelnemer
-                          </option>
-                          <option value={Voters.HOSTS}>Spelleiders</option>
-                          <option value={Voters.GUESTS}>Gasten</option>
-                        </select>
-                      </>
-                    )}
                   </>
                 )}
-            </fieldset>
-          </Card>
-        )}
+              </>
+            )}
+          </fieldset>
+        </Card>
         {type === SlideType.CLOSEST_TO &&
           checkMethod === CheckMethod.AUTOMATIC && (
             <Card>
@@ -1332,7 +1348,10 @@ const EditSlide = ({
         <button
           type="button"
           className="btn-outline btn"
-          onClick={() => remove(index)}
+          onClick={() => {
+            remove(index);
+            void router.push(`/edit/${gameId}/${roundIndex}`);
+          }}
         >
           Slide verwijderen
         </button>
