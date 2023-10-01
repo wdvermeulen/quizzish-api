@@ -124,8 +124,8 @@ model Round {
 
 model NextRoundPossibility {
   conditions  Condition[]
-  nextRoundId String
-  nextRound   Round       @relation("NextRound", fields: [nextRoundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nextRoundId String?
+  nextRound   Round?      @relation("NextRound", fields: [nextRoundId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   roundId     String
   round       Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   userId      String

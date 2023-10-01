@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { gameSchema } from "utils/schema";
+import { gameSchema } from "utils/schemas";
 
 export const gameRouter = createTRPCRouter({
   create: protectedProcedure.mutation(({ ctx }) =>
@@ -13,7 +13,7 @@ export const gameRouter = createTRPCRouter({
   ),
   update: protectedProcedure
     .input(gameSchema)
-    .mutation(({ ctx, input: { id, rounds, ...data } }) =>
+    .mutation(({ ctx, input: { id, ...data } }) =>
       ctx.prisma.game.update({
         where: {
           userId_id: {
@@ -21,7 +21,47 @@ export const gameRouter = createTRPCRouter({
             userId: ctx.session.user.id,
           },
         },
-        data,
+        data: {
+          ...data,
+          rounds: {
+            update: data.rounds.map((round) => ({
+              where: { id: round.id },
+              data: {
+                gameId: id,
+                userId: ctx.session.user.id,
+                ...round,
+                nextRoundPossibilities: undefined,
+                slides: round.slides
+                  ? {
+                      update: round.slides.map((slide) => ({
+                        where: { id: slide.id },
+                        data: {
+                          roundId: round.id,
+                          userId: ctx.session.user.id,
+                          ...slide,
+                          multipleChoiceOptions: slide.multipleChoiceOptions
+                            ? {
+                                update: slide.multipleChoiceOptions.map(
+                                  (option) => ({
+                                    where: { id: option.id },
+                                    data: {
+                                      slideId: slide.id,
+                                      userId: ctx.session.user.id,
+                                      ...option,
+                                    },
+                                  })
+                                ),
+                              }
+                            : undefined,
+                          nextSlidePossibilities: undefined,
+                        },
+                      })),
+                    }
+                  : undefined,
+              },
+            })),
+          },
+        },
       })
     ),
   get: protectedProcedure

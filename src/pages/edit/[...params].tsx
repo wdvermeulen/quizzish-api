@@ -1,5 +1,6 @@
 import {
   type Control,
+  useController,
   useFieldArray,
   useForm,
   type UseFormRegister,
@@ -29,123 +30,30 @@ import Textarea from "components/form/text-area";
 import { minutesToString, secondsToString } from "utils/time";
 import { type ChangeEvent, Fragment, type PropsWithChildren } from "react";
 import { MinusCircleIcon, PlusCircleIcon } from "@heroicons/react/24/solid";
-import { gameSchema } from "utils/schema";
+import {
+  type conditionSchema,
+  gameSchema,
+  type multipleChoiceOptionSchema,
+  type roundSchema,
+  type slideSchema,
+} from "utils/schemas";
+import {
+  gameRangeToMinutes,
+  slideRangeToSeconds,
+  toClosestGameValue,
+  toClosestRoundValue,
+  toClosestSlideValue,
+} from "@/src/utils/constants";
+import { roundRangeToMinutes } from "utils/constants";
+import type { z } from "zod";
 
 type FullGame = NonNullable<RouterOutputs["game"]["getFull"]>;
-const gameRangeToMinutes = [
-  15, 30, 45, 60, 90, 120, 180, 360, 480, 960, 1440,
-] as const;
-const roundRangeToMinutes = [
-  1,
-  3,
-  5,
-  10,
-  15,
-  30,
-  45,
-  60,
-  90,
-  120,
-  180,
-  null,
-] as const;
-const slideRangeToSeconds = [
-  3,
-  5,
-  10,
-  15,
-  30,
-  45,
-  60,
-  90,
-  120,
-  180,
-  300,
-  null,
-] as const;
 
 const SubmitOptions = { addRound: "addRound", save: "save" } as const;
 
-interface ConditionForm {
-  id: string;
-  conditionType: ConditionType;
-  comparisonType1: ComparisonType;
-  comparisonType2: ComparisonType | null;
-  logicOperator: LogicOperator | null;
-  comparisonValue1: number;
-  comparisonValue2: number | null;
-}
-
-interface NextSlidePossibilitiesForm {
-  id: string;
-  nextSlideId?: string;
-  conditions: ConditionForm[];
-}
-
-interface Image {
-  id: string;
-  image: string;
-}
-
-interface MultipleChoiceOptionForm {
-  id: string;
-  description: string | null;
-  earlyPoints: number | null;
-  latePoints: number | null;
-  isRegex: boolean;
-  nextSlideId: string | null;
-}
-
-interface SlideForm {
-  id: string;
-  name: string | null;
-  description: string | null;
-  timeLimitIndex: number;
-  type: SlideType;
-  closestToValue: bigint | null;
-  checkMethod: CheckMethod;
-  pointsForTime: boolean;
-  pointsForOrder: boolean;
-  checkAfter: boolean;
-  explanation: string | null;
-  largeText: string | null;
-  media: string | null;
-  voters: Voters;
-  earlyCorrectPoints: number;
-  lateCorrectPoints: number;
-  earlyIncorrectPoints: number;
-  lateIncorrectPoints: number;
-  nextSlidePossibilities: NextSlidePossibilitiesForm[];
-  images: Image[];
-  multipleChoiceOptions: MultipleChoiceOptionForm[];
-}
-
-interface NextRoundPossibilitiesForm {
-  id: string;
-  nextRoundId?: string;
-  conditions: ConditionForm[];
-}
-
-interface RoundForm {
-  id: string;
-  name: string | null;
-  index: number;
-  description: string | null;
-  timeLimitIndex: number;
-  navigationMode: NavigationMode;
-  checkAfter: boolean;
-  slides: SlideForm[];
-  nextRoundPossibilities: NextRoundPossibilitiesForm[];
-}
-
-interface GameForm {
-  id: string;
-  name: string | null;
-  description: string | null;
-  timeLimitIndex: number;
-  rounds: RoundForm[];
-}
-const conditionToForm = (condition?: Condition): ConditionForm =>
+const conditionToForm = (
+  condition?: Condition
+): z.infer<typeof conditionSchema> =>
   condition
     ? {
         id: condition.id,
@@ -168,7 +76,7 @@ const conditionToForm = (condition?: Condition): ConditionForm =>
 
 const mapMultipleChoiceOption = (
   option: FullGame["rounds"][number]["slides"][number]["multipleChoiceOptions"][number]
-): MultipleChoiceOptionForm => ({
+): z.infer<typeof multipleChoiceOptionSchema> => ({
   id: option.id,
   description: option.description,
   earlyPoints: option.earlyPoints,
@@ -179,23 +87,22 @@ const mapMultipleChoiceOption = (
 
 const slideToForm = (
   slide?: FullGame["rounds"][number]["slides"][number]
-): SlideForm =>
+): z.infer<typeof slideSchema> =>
   slide
     ? {
         id: slide.id,
         name: slide.name,
         description: slide.description,
         type: slide.type,
-        timeLimitIndex: slideRangeToSeconds.findIndex(
-          (m) => m === slide.timeLimitInSeconds
-        ),
+        timeLimitInSeconds: slide.timeLimitInSeconds
+          ? toClosestSlideValue(slide.timeLimitInSeconds)
+          : null,
         closestToValue: slide.closestToValue,
         pointsForTime: slide.pointsForTime,
         pointsForOrder: slide.pointsForOrder,
         checkMethod: slide.checkMethod,
         explanation: slide.explanation,
         largeText: slide.largeText,
-        media: slide.media,
         checkAfter: slide.checkAfter,
         voters: slide.voters,
         earlyCorrectPoints: slide.earlyCorrectPoints,
@@ -209,10 +116,6 @@ const slideToForm = (
             conditions: possibility.conditions.map(conditionToForm),
           })
         ),
-        images: slide.images.map((i) => ({
-          id: i.id,
-          image: i.image,
-        })),
         multipleChoiceOptions: slide.multipleChoiceOptions.map(
           mapMultipleChoiceOption
         ),
@@ -222,14 +125,13 @@ const slideToForm = (
         name: null,
         description: null,
         type: SlideType.NO_ANSWER,
-        timeLimitIndex: slideRangeToSeconds.length,
+        timeLimitInSeconds: slideRangeToSeconds[slideRangeToSeconds.length - 1],
         closestToValue: null,
         pointsForTime: false,
         pointsForOrder: false,
         checkMethod: CheckMethod.AUTOMATIC,
         explanation: null,
         largeText: null,
-        media: null,
         checkAfter: true,
         voters: Voters.ALL_PARTICIPANTS,
         earlyCorrectPoints: 10,
@@ -237,20 +139,21 @@ const slideToForm = (
         earlyIncorrectPoints: 0,
         lateIncorrectPoints: 0,
         nextSlidePossibilities: [],
-        images: [],
         multipleChoiceOptions: [],
       };
 
-const roundToForm = (round?: FullGame["rounds"][number]): RoundForm =>
+const roundToForm = (
+  round?: FullGame["rounds"][number]
+): z.infer<typeof roundSchema> =>
   round
     ? {
         id: round.id,
         name: round.name,
         description: round.description,
         index: round.index,
-        timeLimitIndex: roundRangeToMinutes.findIndex(
-          (m) => m === round.timeLimitInMinutes
-        ),
+        timeLimitInMinutes: round.timeLimitInMinutes
+          ? toClosestRoundValue(round.timeLimitInMinutes)
+          : null,
         navigationMode: round.navigationMode,
         checkAfter: round.checkAfter,
         slides: round.slides.map(slideToForm),
@@ -267,7 +170,7 @@ const roundToForm = (round?: FullGame["rounds"][number]): RoundForm =>
         name: null,
         description: null,
         index: 0,
-        timeLimitIndex: roundRangeToMinutes.length,
+        timeLimitInMinutes: roundRangeToMinutes[roundRangeToMinutes.length - 1],
         navigationMode: NavigationMode.TOGETHER,
         checkAfter: true,
         slides: [],
@@ -351,14 +254,12 @@ const EditComponent = ({
     handleSubmit,
     register,
     formState: { errors },
-  } = useForm<GameForm>({
+  } = useForm<z.infer<typeof gameSchema>>({
     values: {
       id: game.id,
       name: game.name,
       description: game.description,
-      timeLimitIndex: gameRangeToMinutes.findIndex(
-        (m) => m === game.timeLimitInMinutes
-      ),
+      timeLimitInMinutes: toClosestGameValue(game.timeLimitInMinutes),
       rounds: game.rounds.map(roundToForm),
     },
     resetOptions: {
@@ -458,13 +359,13 @@ const Sidebar = ({
   control,
 }: {
   gameId: string;
-  control: Control<GameForm>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
   const router = useRouter();
 
   const rounds = useWatch({
     control,
-    name: `rounds`,
+    name: "rounds",
   });
 
   const { append } = useFieldArray({
@@ -546,7 +447,7 @@ function SidebarRound({
 }: {
   gameId: string;
   roundIndex: number;
-  control: Control<GameForm>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) {
   const router = useRouter();
 
@@ -575,7 +476,7 @@ function SidebarRound({
       </Link>
       <ul className="collapse-content relative left-0 block p-0">
         {router.asPath.startsWith(`/edit/${gameId}/${roundIndex}`) &&
-          round.slides.map((slide, slideIndex) => (
+          round.slides?.map((slide, slideIndex) => (
             <li key={slide.id}>
               <Link
                 href={`/edit/${gameId}/${roundIndex}/${slideIndex}`}
@@ -625,21 +526,67 @@ const InputNameAndDescription = ({
   );
 };
 
+const InputTimeLimit = ({
+  name,
+  toStringFunction,
+  range,
+  control,
+  label,
+}: {
+  name:
+    | "timeLimitInMinutes"
+    | `rounds.${number}.timeLimitInMinutes`
+    | `rounds.${number}.slides.${number}.timeLimitInSeconds`;
+  toStringFunction: (_unit?: number | null) => string;
+  range: (number | null)[];
+  control: Control<z.infer<typeof gameSchema>>;
+  label: string;
+}) => {
+  const {
+    field: { value, onChange },
+  } = useController({
+    name,
+    control,
+    defaultValue: 15,
+  });
+
+  return (
+    <Card>
+      <fieldset className="flex flex-col">
+        <div className="form-control">
+          <label className="card-title" htmlFor="time-limit">
+            {label}
+          </label>
+          <input
+            id="time-limit"
+            type="range"
+            min="0"
+            max={range.length - 1}
+            className="range mt-4"
+            step="1"
+            list="time-list"
+            aria-valuetext={toStringFunction(value)}
+            onChange={(e) => onChange(range[parseInt(e.target.value)])}
+            value={range.indexOf(value || null)}
+          />
+          <p className="text-center">{toStringFunction(value)}</p>
+        </div>
+      </fieldset>
+    </Card>
+  );
+};
+
 const EditGame = ({
   id,
   register,
   control,
 }: {
   id: string;
-  register: UseFormRegister<GameForm>;
-  control: Control<GameForm>;
+  register: UseFormRegister<z.infer<typeof gameSchema>>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
   const router = useRouter();
 
-  const timeLimitIndex = useWatch({
-    control,
-    name: `timeLimitIndex`,
-  });
   const rounds = useWatch({
     control,
     name: `rounds`,
@@ -659,36 +606,13 @@ const EditGame = ({
           registerName={register("name")}
           registerDescription={register("description")}
         />
-        <Card>
-          <fieldset className="flex flex-col">
-            <div className="form-control">
-              <label className="card-title" htmlFor="time-limit">
-                Tijdslimiet
-              </label>
-              <input
-                id="time-limit"
-                type="range"
-                min="0"
-                max={gameRangeToMinutes.length - 1}
-                className="range mt-4"
-                step="1"
-                list="time-list"
-                aria-valuetext={minutesToString(
-                  gameRangeToMinutes[timeLimitIndex]
-                )}
-                {...register("timeLimitIndex")}
-              />
-              <datalist id="time-list">
-                {gameRangeToMinutes.map((minutes) => (
-                  <option key={minutes} value={minutes} />
-                ))}
-              </datalist>
-              <p className="text-center">
-                {minutesToString(gameRangeToMinutes[timeLimitIndex])}
-              </p>
-            </div>
-          </fieldset>
-        </Card>
+        <InputTimeLimit
+          control={control}
+          name="timeLimitInMinutes"
+          range={[...gameRangeToMinutes]}
+          toStringFunction={minutesToString}
+          label="Tijdslimiet"
+        />
       </CardContainer>
       <ButtonContainer>
         <button
@@ -698,13 +622,21 @@ const EditGame = ({
         >
           Spel verwijderen
         </button>
-        {rounds.length < 1 && (
+        {rounds.length < 1 ? (
           <button
             type="submit"
             className="btn-primary btn flex-1 sm:ml-auto sm:flex-none"
             name={SubmitOptions.addRound}
           >
             Eerste ronde toevoegen
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="btn-primary btn flex-1 sm:ml-auto sm:flex-none"
+            name={SubmitOptions.save}
+          >
+            Opslaan
           </button>
         )}
       </ButtonContainer>
@@ -718,14 +650,9 @@ const EditRound = ({
   control,
 }: {
   index: number;
-  register: UseFormRegister<GameForm>;
-  control: Control<GameForm>;
+  register: UseFormRegister<z.infer<typeof gameSchema>>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
-  const timeLimitIndex = useWatch({
-    control,
-    name: `rounds.${index}.timeLimitIndex`,
-  });
-
   const nextRoundPossibilities = useFieldArray({
     control,
     name: `rounds.${index}.nextRoundPossibilities`,
@@ -743,26 +670,13 @@ const EditRound = ({
           registerName={register(`rounds.${index}.name`)}
           registerDescription={register(`rounds.${index}.name`)}
         />
-        <Card>
-          <label className="card-title" htmlFor="time-limit">
-            Tijdslimiet
-          </label>
-          <input
-            id="time-limit"
-            type="range"
-            min="0"
-            max={roundRangeToMinutes.length - 1}
-            className="range"
-            step="1"
-            aria-valuetext={minutesToString(
-              roundRangeToMinutes[timeLimitIndex]
-            )}
-            {...register(`rounds.${index}.timeLimitIndex`)}
-          />
-          <p className="text-center">
-            {minutesToString(roundRangeToMinutes[timeLimitIndex])}
-          </p>
-        </Card>
+        <InputTimeLimit
+          control={control}
+          name={`rounds.${index}.timeLimitInMinutes`}
+          range={[...roundRangeToMinutes]}
+          toStringFunction={minutesToString}
+          label="Tijdslimiet"
+        />
         <Card>
           <label className="card-title" htmlFor="navigation-mode">
             Navigatie voor deelnemers
@@ -847,8 +761,8 @@ const EditNextRoundPossibility = ({
 }: {
   index: number;
   roundIndex: number;
-  register: UseFormRegister<GameForm>;
-  control: Control<GameForm>;
+  register: UseFormRegister<z.infer<typeof gameSchema>>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
   const rounds = useWatch({
     control,
@@ -1011,10 +925,10 @@ const EditSlide = ({
   control,
 }: {
   index: number;
-  register: UseFormRegister<GameForm>;
+  register: UseFormRegister<z.infer<typeof gameSchema>>;
   roundIndex: number;
   gameId: string;
-  control: Control<GameForm>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
   const router = useRouter();
 
@@ -1039,10 +953,6 @@ const EditSlide = ({
     control,
     name: `rounds.${roundIndex}.slides.${index}.pointsForTime`,
   });
-  const timeLimitIndex = useWatch({
-    control,
-    name: `rounds.${roundIndex}.slides.${index}.timeLimitIndex`,
-  });
   const earlyCorrectPoints = useWatch({
     control,
     name: `rounds.${roundIndex}.slides.${index}.earlyCorrectPoints`,
@@ -1063,27 +973,13 @@ const EditSlide = ({
   return (
     <EditLayout>
       <CardContainer>
-        <article className="w-full">
-          <label>
-            Tijdslimiet
-            <input
-              type="range"
-              min="0"
-              max={slideRangeToSeconds.length - 1}
-              className="range"
-              step="1"
-              aria-valuetext={secondsToString(
-                slideRangeToSeconds[timeLimitIndex]
-              )}
-              {...register(
-                `rounds.${roundIndex}.slides.${index}.timeLimitIndex`
-              )}
-            />
-            <p className="text-center">
-              {secondsToString(slideRangeToSeconds[timeLimitIndex])}
-            </p>
-          </label>
-        </article>
+        <InputTimeLimit
+          control={control}
+          name={`rounds.${roundIndex}.slides.${index}.timeLimitInSeconds`}
+          range={[...slideRangeToSeconds]}
+          toStringFunction={secondsToString}
+          label="Tijdslimiet"
+        />
         <InputNameAndDescription
           registerName={register(`rounds.${roundIndex}.slides.${index}.name`)}
           registerDescription={register(
@@ -1369,10 +1265,10 @@ const EditMultipleChoiceOption = ({
   control,
 }: {
   index: number;
-  register: UseFormRegister<GameForm>;
+  register: UseFormRegister<z.infer<typeof gameSchema>>;
   roundIndex: number;
   slideIndex: number;
-  control: Control<GameForm>;
+  control: Control<z.infer<typeof gameSchema>>;
 }) => {
   const { append, remove, fields } = useFieldArray({
     control,

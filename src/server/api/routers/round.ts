@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { roundSchema } from "utils/schemas";
 
 export const roundRouter = createTRPCRouter({
   create: protectedProcedure
@@ -41,15 +42,7 @@ export const roundRouter = createTRPCRouter({
       return newRound;
     }),
   update: protectedProcedure
-    .input(
-      z.object({
-        id: z.string().cuid(),
-        index: z.number().min(1).optional(),
-        name: z.string().min(1).max(128).nullish(),
-        timeLimitInMinutes: z.number().nullish(),
-        description: z.string().min(1).max(1024).nullish(),
-      })
-    )
+    .input(roundSchema)
     .mutation(async ({ ctx, input: { id, ...data } }) => {
       const index = data.index;
       if (index) {

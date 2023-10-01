@@ -29,6 +29,7 @@
           "attributes": false
         }
       }
-    ]
+    ],
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
   }
 }
