@@ -1,4 +1,4 @@
-import { Josefin_Sans } from "@next/font/google";
+import { Josefin_Sans } from "next/font/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
