@@ -5,27 +5,27 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "postinstall": "prisma generate",
     "lint": "next lint",
     "start": "next start",
-    "db-push": "prisma db push",
-    "prisma-studio": "npx prisma studio",
-    "prisma-format": "npx prisma format",
+    "db:push": "dotenv drizzle-kit push:pg",
+    "drizzle-studio": "dotenv drizzle-kit studio",
     "prettier": "prettier --write .",
     "prepare": "husky install"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^0.3.3",
     "@heroicons/react": "^2.0.18",
     "@hookform/resolvers": "^3.3.1",
-    "@next-auth/prisma-adapter": "^1.0.7",
-    "@paralleldrive/cuid2": "^2.2.2",
-    "@prisma/client": "^5.4.1",
+    "@t3-oss/env-nextjs": "^0.6.0",
     "@tanstack/react-query": "^4.36.1",
     "@trpc/client": "^10.40.0",
     "@trpc/next": "^10.40.0",
     "@trpc/react-query": "^10.40.0",
     "@trpc/server": "^10.40.0",
+    "@vercel/postgres": "^0.5.0",
     "daisyui": "^3.9.2",
+    "drizzle-orm": "^0.28.7-6c67975",
+    "drizzle-zod": "^0.5.1",
     "next": "13.5.4",
     "next-auth": "^4.23.2",
     "react": "18.2.0",
@@ -36,6 +36,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/eslint": "^8.44.2",
     "@types/node": "^20.8.3",
     "@types/prettier": "^2.7.3",
     "@types/react": "^18.2.25",
@@ -43,23 +44,22 @@
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
     "autoprefixer": "^10.4.16",
+    "dotenv-cli": "^7.3.0",
+    "drizzle-kit": "^0.19.13",
     "eslint": "^8.51.0",
     "eslint-config-next": "13.5.4",
     "eslint-config-prettier": "^9.0.0",
     "husky": "^8.0.3",
     "lint-staged": "^14.0.1",
+    "pg": "^8.7.1",
     "postcss": "^8.4.31",
     "prettier": "3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.5",
-    "prisma": "^5.4.1",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.2.2"
   },
   "ct3aMetadata": {
     "initVersion": "7.5.1"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
